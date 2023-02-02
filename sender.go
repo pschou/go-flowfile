@@ -83,9 +83,13 @@ func NewHTTPSender(url string, client *http.Client) (*HTTPSender, error) {
 	}, nil
 }
 
+type SendConfig struct {
+	Header http.Header
+}
+
 // Send a flow file to the remote server and return any errors back.
 // A nil return is a successful send.
-func (hs *HTTPSender) Send(f *File) error {
+func (hs *HTTPSender) Send(f *File, cfg *SendConfig) error {
 	f.AddChecksum(hs.CheckSumType)
 	r, w := io.Pipe()
 	defer r.Close() // Make sure pipe is terminated
@@ -97,6 +101,16 @@ func (hs *HTTPSender) Send(f *File) error {
 		SendFiles(w, []*File{f})
 		w.Close()
 	}()
+
+	// Set custom http headers
+	if cfg != nil && cfg.Header != nil {
+		for k, v := range cfg.Header {
+			if len(v) > 0 {
+				req.Header.Set(k, v[0])
+			}
+		}
+	}
+
 	req.Header.Set("Content-Type", "application/flowfile-v3")
 	req.Header.Set("x-nifi-transfer-protocol-version", "3")
 	req.Header.Set("x-nifi-transaction-id", hs.TransactionID)
