@@ -29,6 +29,20 @@ func (h Attributes) Clone() Attributes {
 }
 
 // Returns the first attribute's value with specified name
+func (h *Attributes) Unset(name string) (ok bool) {
+	out := []Attribute{}
+	for _, elm := range []Attribute(*h) {
+		if elm.Name == name {
+			ok = true
+		} else {
+			out = append(out, elm)
+		}
+	}
+	*h = Attributes(out)
+	return
+}
+
+// Returns the first attribute's value with specified name
 func (h *Attributes) Get(name string) string {
 	for _, elm := range []Attribute(*h) {
 		if elm.Name == name {

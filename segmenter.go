@@ -4,18 +4,28 @@ import (
 	"fmt"
 )
 
-// Splits up a flowfile into `count` number of segments.  The intended purpose
+// Splits up a flowfile into count number of segments.  The intended purpose
 // here is to enable larger files to be sent in smaller chucks so as to avoid
 // having to replay sending a whole file in case a connection gets dropped.
 func Segment(in *File, count int64) (out []*File, err error) {
+	size := in.n
+	segmentSize := size / count
+	if size%count > 0 {
+		segmentSize++
+	}
+	return SegmentBySize(in, segmentSize)
+}
+
+// Splits up a flowfile into a number of segments with segmentSize.  The intended
+// purpose here is to enable larger files to be sent in smaller chucks so as to
+// avoid having to replay sending a whole file in case a connection gets
+// dropped.
+func SegmentBySize(in *File, segmentSize int64) (out []*File, err error) {
 	if in.ra == nil {
 		return nil, fmt.Errorf("Must have a reader with ReadAt capabilities to segment")
 	}
 	size := in.n
-	segment_size := size / count
-	if size%count > 0 {
-		segment_size++
-	}
+	count := (size-1)/segmentSize + 1
 
 	// Make sure parent attributes are set
 	puuid := in.Attrs.Get("uuid")
@@ -38,7 +48,7 @@ func Segment(in *File, count int64) (out []*File, err error) {
 	}
 
 	for i := int64(0); i < count; i++ {
-		st, en := segment_size*i, segment_size*(i+1)
+		st, en := segmentSize*i, segmentSize*(i+1)
 		if en > in.n {
 			en = in.n
 		}

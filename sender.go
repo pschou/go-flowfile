@@ -44,6 +44,9 @@ func NewHTTPSender(url string, client *http.Client) (*HTTPSender, error) {
 		return nil, fmt.Errorf("Unexpected status code %d", res.StatusCode)
 	}
 
+	// If the initial post was redirected, we'll want to stick with the final URL
+	url = res.Request.URL.String()
+
 	{ // Check for Accept types
 		types := strings.Split(res.Header.Get("Accept"), ",")
 		var hasFF bool
@@ -69,15 +72,6 @@ func NewHTTPSender(url string, client *http.Client) (*HTTPSender, error) {
 	maxPartitionSize, _ := strconv.Atoi(res.Header.Get("x-ff-Max-Partition-Size"))
 	errorCorrection, _ := strconv.ParseFloat(res.Header.Get("x-ff-Error-Correction"), 32)
 
-	// Make sure gzip is turned off in this version
-	if client.Transport == nil {
-		if hc, ok := http.DefaultTransport.(*http.Transport); ok {
-			hc.DisableCompression = true
-		}
-	} else if hc, ok := client.Transport.(*http.Transport); ok {
-		hc.DisableCompression = true
-	}
-
 	return &HTTPSender{
 		url:              url,
 		client:           client,
@@ -89,8 +83,8 @@ func NewHTTPSender(url string, client *http.Client) (*HTTPSender, error) {
 	}, nil
 }
 
-// Send a flow file to the remote server and return any errors back.  A nil
-// return is a successful send.
+// Send a flow file to the remote server and return any errors back.
+// A nil return is a successful send.
 func (hs *HTTPSender) Send(f *File) error {
 	f.AddChecksum(hs.CheckSumType)
 	r, w := io.Pipe()

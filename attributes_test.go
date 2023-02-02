@@ -27,6 +27,19 @@ func ExampleAttributesGet() {
 	// attribute: ./
 }
 
+// This show how to unset an individual attribute
+func ExampleAttributesUnset() {
+	var a Attributes
+	a.Set("path", "./")
+	a.Set("junk", "cars")
+	a.Set("filename", "abcd-efgh")
+
+	a.Unset("junk")
+	fmt.Printf("attributes: %#v\n", a)
+	// Output:
+	// attributes: flowfile.Attributes{flowfile.Attribute{Name:"path", Value:"./"}, flowfile.Attribute{Name:"filename", Value:"abcd-efgh"}}
+}
+
 // This show how to encode the attributes into a header for sending
 func ExampleAttributesMarshall() {
 	var a Attributes
