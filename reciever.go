@@ -12,10 +12,11 @@ import (
 )
 
 type HTTPReciever struct {
-	Handler         func(*File, *http.Request) error
-	BytesSeen       uint64
-	Server          string
-	AcceptSizeLimit uint64
+	Handler          func(*File, *http.Request) error
+	BytesSeen        uint64
+	Server           string
+	MaxPartitionSize uint64
+	ErrorCorrection  float64
 }
 
 // Handle for accepting flow files through a http webserver.  The handle here
@@ -36,8 +37,8 @@ func (f HTTPReciever) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	case "HEAD":
 		// Handle the head request method
 		hdr.Set("Accept", "application/flowfile-v3,*/*;q=0.8")
-		if f.AcceptSizeLimit > 0 {
-			hdr.Set("Accept-Size-Limit", fmt.Sprintf("%d", f.AcceptSizeLimit))
+		if f.MaxPartitionSize > 0 {
+			hdr.Set("x-ff-max-partition-size", fmt.Sprintf("%d", f.MaxPartitionSize))
 		}
 		hdr.Set("x-nifi-transfer-protocol-version", "3")
 		hdr.Set("Content-Length", "0")

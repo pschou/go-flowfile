@@ -54,6 +54,7 @@ func SegmentBySize(in *File, segmentSize int64) (out []*File, err error) {
 		}
 
 		f := &File{ra: in.ra, i: st, n: en - st, Attrs: Attributes(parentAttrs).Clone()}
+		f.Attrs.Set("segment-offset", fmt.Sprintf("%d", st))
 		f.Attrs.Set("segment-index", fmt.Sprintf("%d", i))
 		f.Attrs.Set("segment-count", fmt.Sprintf("%d", count))
 		f.Attrs.GenerateUUID()

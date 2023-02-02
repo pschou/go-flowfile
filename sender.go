@@ -22,7 +22,7 @@ type HTTPSender struct {
 	// Non-standard NiFi entities supported by this library
 	MaxPartitionSize int    // Maximum partition size for partitioned file
 	CheckSumType     string // What kind of CheckSum to use for sent files
-	ErrorCorrection  float32
+	ErrorCorrection  float64
 }
 
 // Create the HTTP sender and verify that the remote side is listening.
@@ -69,8 +69,8 @@ func NewHTTPSender(url string, client *http.Client) (*HTTPSender, error) {
 	}
 
 	// Parse out non-standard fields
-	maxPartitionSize, _ := strconv.Atoi(res.Header.Get("x-ff-Max-Partition-Size"))
-	errorCorrection, _ := strconv.ParseFloat(res.Header.Get("x-ff-Error-Correction"), 32)
+	maxPartitionSize, _ := strconv.Atoi(res.Header.Get("x-ff-max-partition-size"))
+	errorCorrection, _ := strconv.ParseFloat(res.Header.Get("x-ff-error-correction"), 64)
 
 	return &HTTPSender{
 		url:              url,
@@ -79,7 +79,7 @@ func NewHTTPSender(url string, client *http.Client) (*HTTPSender, error) {
 		Server:           res.Header.Get("Server"),
 		MaxPartitionSize: maxPartitionSize,
 		CheckSumType:     "SHA256",
-		ErrorCorrection:  float32(errorCorrection),
+		ErrorCorrection:  errorCorrection,
 	}, nil
 }
 
