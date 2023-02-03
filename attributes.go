@@ -117,7 +117,7 @@ func (h *Attributes) Unmarshall(in io.Reader) (err error) {
 }
 
 // Parse the FlowFile attributes into binary.
-func (h *Attributes) Marshall(out io.Writer) (err error) {
+func (h *Attributes) Marshal(out io.Writer) (err error) {
 	if _, err = out.Write([]byte("NiFiFF3")); err != nil {
 		return fmt.Errorf("Error writing NiFiFF3 header: %s", err)
 	}

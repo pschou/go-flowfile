@@ -21,8 +21,11 @@ import (
 	"io/ioutil"
 )
 
-var UserAgent = "NiFi FlowFile Client (github.com/pschou/go-flowfile)"
-var AboutString = "NiFi FlowFile Server (github.com/pschou/go-flowfile)"
+var (
+	UserAgent   = "NiFi FlowFile Client (github.com/pschou/go-flowfile)"
+	AboutString = "NiFi FlowFile Server (github.com/pschou/go-flowfile)"
+	Debug       = false
+)
 
 // A File is a handler for either an incoming datafeed or outgoing datafeed
 // of the contents of a file over a File connection.  The intent is for one

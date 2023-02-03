@@ -15,7 +15,7 @@ type HTTPReciever struct {
 	Handler          func(*File, *http.Request) error
 	BytesSeen        uint64
 	Server           string
-	MaxPartitionSize uint64
+	MaxPartitionSize int
 	ErrorCorrection  float64
 }
 
@@ -38,10 +38,11 @@ func (f HTTPReciever) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		// Handle the head request method
 		hdr.Set("Accept", "application/flowfile-v3,*/*;q=0.8")
 		if f.MaxPartitionSize > 0 {
-			hdr.Set("x-ff-max-partition-size", fmt.Sprintf("%d", f.MaxPartitionSize))
+			hdr.Set("max-partition-size", fmt.Sprintf("%d", f.MaxPartitionSize))
 		}
 		hdr.Set("x-nifi-transfer-protocol-version", "3")
 		hdr.Set("Content-Length", "0")
+		hdr.Set("Server", AboutString)
 		if f.Server != "" {
 			hdr.Set("Server", f.Server)
 		}
@@ -62,8 +63,11 @@ func (f HTTPReciever) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			if err == nil {
 				w.WriteHeader(http.StatusOK)
 			} else {
-				log.Printf("Error: %s", err)
-				http.Error(w, fmt.Sprintf("Error %s", err), http.StatusInternalServerError)
+				if Debug {
+					log.Printf("Error: %s", err)
+				}
+				w.WriteHeader(http.StatusInternalServerError)
+				//http.Error(w, fmt.Sprintf("Error %s", err), http.StatusInternalServerError)
 			}
 		}()
 

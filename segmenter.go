@@ -25,6 +25,10 @@ func SegmentBySize(in *File, segmentSize int64) (out []*File, err error) {
 		return nil, fmt.Errorf("Must have a reader with ReadAt capabilities to segment")
 	}
 	size := in.n
+	//fmt.Println("size", size, "segment", segmentSize)
+	if size < segmentSize {
+		return []*File{in}, nil
+	}
 	count := (size-1)/segmentSize + 1
 
 	// Make sure parent attributes are set

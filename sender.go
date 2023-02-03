@@ -3,11 +3,14 @@ package flowfile
 import (
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/google/uuid"
+	"github.com/remeh/sizedwaitgroup"
 )
 
 // The HTTP Sender will establish a NiFi handshake and ensure that the remote
@@ -23,29 +26,51 @@ type HTTPSender struct {
 	MaxPartitionSize int    // Maximum partition size for partitioned file
 	CheckSumType     string // What kind of CheckSum to use for sent files
 	ErrorCorrection  float64
+
+	hold      *bool
+	waitGroup sizedwaitgroup.SizedWaitGroup
+	wait      sync.RWMutex
 }
 
 // Create the HTTP sender and verify that the remote side is listening.
 func NewHTTPSender(url string, client *http.Client) (*HTTPSender, error) {
-	req, err := http.NewRequest("HEAD", url, nil)
+	hs := &HTTPSender{
+		url:          url,
+		client:       client,
+		CheckSumType: "SHA256",
+		waitGroup:    sizedwaitgroup.New(4),
+	}
+
+	err := hs.Handshake()
 	if err != nil {
 		return nil, err
+	}
+	return hs, nil
+}
+
+func (hs *HTTPSender) Handshake() error {
+	hs.wait.Lock()
+	defer hs.wait.Unlock()
+
+	req, err := http.NewRequest("HEAD", hs.url, nil)
+	if err != nil {
+		return err
 	}
 
 	txid := uuid.New().String()
 	req.Header.Set("x-nifi-transaction-id", txid)
 	req.Header.Set("User-Agent", UserAgent)
-	res, err := client.Do(req)
+	res, err := hs.client.Do(req)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	if res.StatusCode != 200 {
-		return nil, fmt.Errorf("Unexpected status code %d", res.StatusCode)
+		return fmt.Errorf("Unexpected status code %d", res.StatusCode)
 	}
 
 	// If the initial post was redirected, we'll want to stick with the final URL
-	url = res.Request.URL.String()
+	hs.url = res.Request.URL.String()
 
 	{ // Check for Accept types
 		types := strings.Split(res.Header.Get("Accept"), ",")
@@ -57,7 +82,7 @@ func NewHTTPSender(url string, client *http.Client) (*HTTPSender, error) {
 			}
 		}
 		if !hasFF {
-			return nil, fmt.Errorf("Server does not support flowfile-v3")
+			return fmt.Errorf("Server does not support flowfile-v3")
 		}
 	}
 
@@ -65,31 +90,59 @@ func NewHTTPSender(url string, client *http.Client) (*HTTPSender, error) {
 	switch v := res.Header.Get("x-nifi-transfer-protocol-version"); v {
 	case "3": // Add more versions after verifying support is there
 	default:
-		return nil, fmt.Errorf("Unknown NiFi TransferVersion %q", v)
+		return fmt.Errorf("Unknown NiFi TransferVersion %q", v)
 	}
 
 	// Parse out non-standard fields
-	maxPartitionSize, _ := strconv.Atoi(res.Header.Get("x-ff-max-partition-size"))
-	errorCorrection, _ := strconv.ParseFloat(res.Header.Get("x-ff-error-correction"), 64)
+	if v := res.Header.Get("Max-Partition-Size"); v != "" {
+		maxPartitionSize, err := strconv.Atoi(v)
+		if err == nil {
+			hs.MaxPartitionSize = maxPartitionSize
+		} else {
+			if Debug {
+				log.Println("Unable to parse Max-Partition-Size", err)
+			}
+		}
+	}
+	if v := res.Header.Get("error-correction"); v != "" {
+		errorCorrection, err := strconv.ParseFloat(v, 64)
+		if err != nil {
+			hs.ErrorCorrection = errorCorrection
+		}
+	}
 
-	return &HTTPSender{
-		url:              url,
-		client:           client,
-		TransactionID:    txid,
-		Server:           res.Header.Get("Server"),
-		MaxPartitionSize: maxPartitionSize,
-		CheckSumType:     "SHA256",
-		ErrorCorrection:  errorCorrection,
-	}, nil
+	hs.TransactionID = txid
+	hs.Server = res.Header.Get("Server")
+	return nil
 }
 
 type SendConfig struct {
-	Header http.Header
+	header http.Header
+}
+
+func (c *SendConfig) GetHeader(key string) (value string) {
+	if c.header == nil {
+		c.header = make(http.Header)
+	}
+	return c.header.Get(key)
+}
+func (c *SendConfig) SetHeader(key, value string) {
+	if c.header == nil {
+		c.header = make(http.Header)
+	}
+	c.header.Set(key, value)
 }
 
 // Send a flow file to the remote server and return any errors back.
 // A nil return is a successful send.
 func (hs *HTTPSender) Send(f *File, cfg *SendConfig) error {
+	hs.wait.RLock()
+	hs.waitGroup.Add()
+	defer func() {
+		hs.wait.RUnlock()
+		hs.waitGroup.Done()
+	}()
+
 	f.AddChecksum(hs.CheckSumType)
 	r, w := io.Pipe()
 	defer r.Close() // Make sure pipe is terminated
@@ -103,8 +156,8 @@ func (hs *HTTPSender) Send(f *File, cfg *SendConfig) error {
 	}()
 
 	// Set custom http headers
-	if cfg != nil && cfg.Header != nil {
-		for k, v := range cfg.Header {
+	if cfg != nil && cfg.header != nil {
+		for k, v := range cfg.header {
 			if len(v) > 0 {
 				req.Header.Set(k, v[0])
 			}

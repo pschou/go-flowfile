@@ -41,13 +41,13 @@ func ExampleAttributesUnset() {
 }
 
 // This show how to encode the attributes into a header for sending
-func ExampleAttributesMarshall() {
+func ExampleAttributesMarshal() {
 	var a Attributes
 	a.Set("path", "./")
 	a.Set("filename", "abcd-efgh")
 
 	buf := bytes.NewBuffer([]byte{})
-	a.Marshall(buf)
+	a.Marshal(buf)
 
 	fmt.Printf("attributes: %q\n", buf)
 	// Output:
@@ -61,7 +61,7 @@ func ExampleAttributesUnmarshall() {
 	a.Set("filename", "abcd-efgh")
 
 	buf := bytes.NewBuffer([]byte{})
-	a.Marshall(buf)
+	a.Marshal(buf)
 	b.Unmarshall(buf)
 
 	fmt.Printf("attributes: %#v\n", b)
