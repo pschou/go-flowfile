@@ -1,6 +1,0 @@
-# github.com/google/uuid v1.3.0
-## explicit
-github.com/google/uuid
-# github.com/pschou/go-flowfile v0.0.0-20230206053146-fe777d97806a
-## explicit
-github.com/pschou/go-flowfile

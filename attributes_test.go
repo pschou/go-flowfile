@@ -1,25 +1,28 @@
-package flowfile
+package flowfile_test
 
 import (
 	"bytes"
 	"fmt"
+	"log"
+
+	"github.com/pschou/go-flowfile"
 )
 
 // This show how to set an individual attribute
 func ExampleAttributesSet() {
-	a := Attributes{}
+	var a flowfile.Attributes
 	fmt.Printf("attributes: %#v\n", a)
 
 	a.Set("path", "./")
 	fmt.Printf("attributes: %#v\n", a)
 	// Output:
-	// attributes: flowfile.Attributes{}
+	// attributes: flowfile.Attributes(nil)
 	// attributes: flowfile.Attributes{flowfile.Attribute{Name:"path", Value:"./"}}
 }
 
 // This show how to get an individual attribute
 func ExampleAttributesGet() {
-	var a Attributes
+	var a flowfile.Attributes
 	a.Set("path", "./")
 
 	fmt.Println("attribute:", a.Get("path"))
@@ -29,7 +32,7 @@ func ExampleAttributesGet() {
 
 // This show how to unset an individual attribute
 func ExampleAttributesUnset() {
-	var a Attributes
+	var a flowfile.Attributes
 	a.Set("path", "./")
 	a.Set("junk", "cars")
 	a.Set("filename", "abcd-efgh")
@@ -41,8 +44,8 @@ func ExampleAttributesUnset() {
 }
 
 // This show how to encode the attributes into a header for sending
-func ExampleAttributesMarshal() {
-	var a Attributes
+func ExampleAttributesWriteTo() {
+	var a flowfile.Attributes
 	a.Set("path", "./")
 	a.Set("filename", "abcd-efgh")
 
@@ -55,16 +58,39 @@ func ExampleAttributesMarshal() {
 }
 
 // This show how to decode the attributes frim a header for parsing
-func ExampleAttributesUnmarshal() {
-	var a, b Attributes
+func ExampleAttributesReadFrom() {
+	var a flowfile.Attributes
+	wire := bytes.NewBuffer([]byte("NiFiFF3\x00\x02\x00\x04path\x00\x02./\x00\bfilename\x00\tabcd-efgh"))
+
+	a.ReadFrom(wire)
+
+	fmt.Printf("attributes: %#v\n", a)
+	// Output:
+	// attributes: flowfile.Attributes{flowfile.Attribute{Name:"path", Value:"./"}, flowfile.Attribute{Name:"filename", Value:"abcd-efgh"}}
+}
+
+// This show how to encode the attributes into a header for sending
+func ExampleAttributesMarshal() {
+	var a flowfile.Attributes
 	a.Set("path", "./")
 	a.Set("filename", "abcd-efgh")
 
-	buf := bytes.NewBuffer([]byte{})
-	a.WriteTo(buf)
-	b.ReadFrom(buf)
+	fmt.Printf("attributes: %q\n", flowfile.MarshalAttributes(a))
+	// Output:
+	// attributes: "NiFiFF3\x00\x02\x00\x04path\x00\x02./\x00\bfilename\x00\tabcd-efgh"
+}
 
-	fmt.Printf("attributes: %#v\n", b)
+// This show how to decode the attributes frim a header for parsing
+func ExampleAttributesUnmarshal() {
+	var a flowfile.Attributes
+	buf := []byte("NiFiFF3\x00\x02\x00\x04path\x00\x02./\x00\bfilename\x00\tabcd-efgh")
+
+	err := flowfile.UnmarshalAttributes(buf, &a)
+	if err != nil {
+		log.Fatal("Error unmarshalling attributes:", err)
+	}
+
+	fmt.Printf("attributes: %#v\n", a)
 	// Output:
 	// attributes: flowfile.Attributes{flowfile.Attribute{Name:"path", Value:"./"}, flowfile.Attribute{Name:"filename", Value:"abcd-efgh"}}
 }

@@ -70,7 +70,7 @@ func (r *Scanner) Scan() bool {
 		return false
 	}
 
-	r.last, r.err = ReadFile(r.r)
+	r.last, r.err = Parse(r.r)
 	if r.last != nil {
 		r.last.cksumInit()
 	}

@@ -1,4 +1,2 @@
 github.com/google/uuid v1.3.0 h1:t6JiXgmwXMjEs8VusXIJk2BXHsn+wx8BZdTaoZ5fu7I=
 github.com/google/uuid v1.3.0/go.mod h1:TIyPZe4MgqvfeYDBFedMoGGpEw/LqOeaOT+nhxU+yHo=
-github.com/pschou/go-flowfile v0.0.0-20230206053146-fe777d97806a h1:3rudENgP+dn1Jrg71fykA8k96BAIiqaoYqRSk4gzgl0=
-github.com/pschou/go-flowfile v0.0.0-20230206053146-fe777d97806a/go.mod h1:vtrRfVUCYft2+d+K/gGVXHxgSmLn+jkKQLrlXT/GRbU=

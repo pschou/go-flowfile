@@ -1,4 +1,4 @@
-package flowfile
+package flowfile_test
 
 import (
 	"bytes"

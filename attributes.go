@@ -79,9 +79,12 @@ func (h *Attributes) Set(name, val string) *Attributes {
 }
 
 // Parse the FlowFile attributes from a binary slice.
-func (h *Attributes) Unmarshal(in []byte) error {
-	buf := bytes.NewBuffer([]byte{})
-	return h.ReadFrom(buf)
+func UnmarshalAttributes(in []byte, h *Attributes) (err error) {
+	*h = Attributes{}
+	if err = h.ReadFrom(bytes.NewBuffer(in)); err == io.EOF {
+		err = nil
+	}
+	return
 }
 
 // Parse the FlowFile attributes from binary Reader.
@@ -124,7 +127,7 @@ func (h *Attributes) ReadFrom(in io.Reader) (err error) {
 }
 
 // Parse the FlowFile attributes into binary slice.
-func (h *Attributes) Marshal() []byte {
+func MarshalAttributes(h Attributes) []byte {
 	buf := bytes.NewBuffer([]byte{})
 	h.WriteTo(buf)
 	return buf.Bytes()

@@ -8,7 +8,7 @@ import (
 	"log"
 )
 
-// Send out a set of flowfiles over the wire
+// Send out a flowfile to the wire
 func writeTo(out io.Writer, f *File) (err error) {
 	header := bytes.NewBuffer([]byte{})
 	if err = f.Attrs.WriteTo(header); err != nil {
@@ -33,9 +33,18 @@ func writeTo(out io.Writer, f *File) (err error) {
 	return
 }
 
+// Parse an io.Reader of raw FlowFile formatted byte slice into a File struct
+// for processing.  Note: This is not preferred as it can cause memory bloat.
+func Marshal(f File) (dat []byte, err error) {
+	buf := bytes.NewBuffer(dat)
+	err = f.WriteTo(buf)
+	dat = buf.Bytes()
+	return
+}
+
 // Parse an io.Reader of raw FlowFile formatted byte stream into a File struct
 // for processing
-func ReadFile(in io.Reader) (f *File, err error) {
+func Parse(in io.Reader) (f *File, err error) {
 	var a Attributes
 	if err = a.ReadFrom(in); err != nil {
 		return
@@ -56,4 +65,11 @@ func ReadFile(in io.Reader) (f *File, err error) {
 		f.r = in
 	}
 	return
+}
+
+// Parse an io.Reader of raw FlowFile formatted byte slice into a File struct
+// for processing.  Note: This is not preferred as it can cause memory bloat.
+func Unmarshal(dat []byte) (f *File, err error) {
+	f = new(File)
+	return Parse(bytes.NewBuffer(dat))
 }

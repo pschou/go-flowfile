@@ -19,10 +19,14 @@ type HTTPReciever struct {
 	//BytesSeen        uint64
 }
 
+// NewHTTPReciever interfaces with the built-in HTTP Handler and parses out the
+// FlowFile stream and provids a FlowFile scanner to a FlowFile handler.
 func NewHTTPReciever(handler func(*Scanner, *http.Request) error) *HTTPReciever {
 	return &HTTPReciever{handler: handler}
 }
 
+// NewHTTPFileReciever interfaces with the built-in HTTP Handler and parses out
+// the individual FlowFiles from a stream and sends them to a FlowFile handler.
 func NewHTTPFileReciever(handler func(*File, *http.Request) error) *HTTPReciever {
 	return &HTTPReciever{handler: func(s *Scanner, r *http.Request) (err error) {
 		var ff *File
