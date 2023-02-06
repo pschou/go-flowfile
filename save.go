@@ -43,7 +43,9 @@ func (f *File) Save(baseDir string) (outputFile string, err error) {
 		if _, err = io.Copy(fh, f); err != nil {
 			return
 		}
-		err = f.Verify() // Return the verification of the checksum
+		if f.Size > 0 {
+			err = f.Verify() // Return the verification of the checksum
+		}
 	} else {
 		var parentSize, offset uint64
 		if parentSize, err = strconv.ParseUint(sz, 10, 64); err != nil {

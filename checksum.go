@@ -28,6 +28,9 @@ var (
 
 // Verify the file sent was complete and accurate
 func (l *File) Verify() error {
+	if l.Size == 0 {
+		return nil
+	}
 	switch l.cksumStatus {
 	case cksumInit:
 		hashval := l.cksum.Sum(nil)
@@ -50,14 +53,16 @@ func (l *File) Verify() error {
 
 // Internal function called before a file is read for setting up the hashing function.
 func (l *File) cksumInit() {
-	if ct := l.Attrs.Get("checksum-type"); ct != "" {
-		new := getChecksumFunc(ct)
-		if new != nil {
-			l.cksum = new()
-			l.cksumStatus = cksumInit
+	if l.Size != 0 {
+		if ct := l.Attrs.Get("checksum-type"); ct != "" {
+			new := getChecksumFunc(ct)
+			if new != nil {
+				l.cksum = new()
+				l.cksumStatus = cksumInit
+			}
+		} else {
+			l.cksumStatus = cksumUnverified
 		}
-	} else {
-		l.cksumStatus = cksumUnverified
 	}
 }
 
