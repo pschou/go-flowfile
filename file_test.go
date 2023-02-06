@@ -9,7 +9,7 @@ import (
 )
 
 // Sends files out a writer, making sure the headers are sent before each file is sent.
-func ExampleWriteTo() {
+func ExampleFileWriteTo() {
 	wire := bytes.NewBuffer([]byte{})
 	{
 		dat := []byte("this is a custom string for flowfile")
@@ -25,15 +25,8 @@ func ExampleWriteTo() {
 }
 
 // This example shows how to write a FlowFile and then read in a stream to make a flowfile
-func ExampleFlowFileScanner() {
-	wire := bytes.NewBuffer([]byte{})
-	{
-		dat := []byte("this is a custom string for flowfile")
-		ff := flowfile.New(bytes.NewReader(dat), int64(len(dat)))
-		ff.Attrs.Set("path", "./")
-		ff.Attrs.Set("filename", "abcd-efgh")
-		ff.WriteTo(wire)
-	}
+func ExampleFileNewScannerScanner() {
+	wire := bytes.NewBuffer([]byte("NiFiFF3\x00\x02\x00\x04path\x00\x02./\x00\bfilename\x00\tabcd-efgh\x00\x00\x00\x00\x00\x00\x00$this is a custom string for flowfile"))
 
 	s := flowfile.NewScanner(wire)
 	for s.Scan() {
