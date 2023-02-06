@@ -9,7 +9,7 @@ import (
 )
 
 // Sends files out a writer, making sure the headers are sent before each file is sent.
-func ExampleFileWriteTo() {
+func ExampleFile_WriteTo() {
 	wire := bytes.NewBuffer([]byte{})
 	{
 		dat := []byte("this is a custom string for flowfile")
@@ -24,8 +24,23 @@ func ExampleFileWriteTo() {
 	// wire: "NiFiFF3\x00\x02\x00\x04path\x00\x02./\x00\bfilename\x00\tabcd-efgh\x00\x00\x00\x00\x00\x00\x00$this is a custom string for flowfile"
 }
 
+// Sends files out a writer, making sure the headers are sent before each file is sent.
+func ExampleUnmarshal() {
+	dat := []byte("NiFiFF3\x00\x02\x00\x04path\x00\x02./\x00\bfilename\x00\tabcd-efgh\x00\x00\x00\x00\x00\x00\x00$this is a custom string for flowfile")
+
+	f, _ := flowfile.Unmarshal(dat)
+	fmt.Printf("Attrs: %#v\n", f.Attrs)
+
+	buf := bytes.NewBuffer([]byte{})
+	buf.ReadFrom(f)
+	fmt.Printf("content: %q\n", buf.String())
+	// Output:
+	// Attrs: flowfile.Attributes{flowfile.Attribute{Name:"path", Value:"./"}, flowfile.Attribute{Name:"filename", Value:"abcd-efgh"}}
+	// content: "this is a custom string for flowfile"
+}
+
 // This example shows how to write a FlowFile and then read in a stream to make a flowfile
-func ExampleFileNewScanner() {
+func ExampleNewScanner() {
 	wire := bytes.NewBuffer([]byte("NiFiFF3\x00\x02\x00\x04path\x00\x02./\x00\bfilename\x00\tabcd-efgh\x00\x00\x00\x00\x00\x00\x00$this is a custom string for flowfile"))
 
 	s := flowfile.NewScanner(wire)

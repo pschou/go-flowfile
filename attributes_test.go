@@ -9,7 +9,7 @@ import (
 )
 
 // This show how to set an individual attribute
-func ExampleAttributesSet() {
+func ExampleAttributes_Set() {
 	var a flowfile.Attributes
 	fmt.Printf("attributes: %#v\n", a)
 
@@ -21,7 +21,7 @@ func ExampleAttributesSet() {
 }
 
 // This show how to get an individual attribute
-func ExampleAttributesGet() {
+func ExampleAttributes_Get() {
 	var a flowfile.Attributes
 	a.Set("path", "./")
 
@@ -31,7 +31,7 @@ func ExampleAttributesGet() {
 }
 
 // This show how to unset an individual attribute
-func ExampleAttributesUnset() {
+func ExampleAttributes_Unset() {
 	var a flowfile.Attributes
 	a.Set("path", "./")
 	a.Set("junk", "cars")
@@ -44,7 +44,7 @@ func ExampleAttributesUnset() {
 }
 
 // This show how to encode the attributes into a header for sending
-func ExampleAttributesWriteTo() {
+func ExampleAttributes_WriteTo() {
 	var a flowfile.Attributes
 	a.Set("path", "./")
 	a.Set("filename", "abcd-efgh")
@@ -58,7 +58,7 @@ func ExampleAttributesWriteTo() {
 }
 
 // This show how to decode the attributes frim a header for parsing
-func ExampleAttributesReadFrom() {
+func ExampleAttributes_ReadFrom() {
 	var a flowfile.Attributes
 	wire := bytes.NewBuffer([]byte("NiFiFF3\x00\x02\x00\x04path\x00\x02./\x00\bfilename\x00\tabcd-efgh"))
 
@@ -70,7 +70,7 @@ func ExampleAttributesReadFrom() {
 }
 
 // This show how to encode the attributes into a header for sending
-func ExampleAttributesMarshal() {
+func ExampleAttributes_Marshal() {
 	var a flowfile.Attributes
 	a.Set("path", "./")
 	a.Set("filename", "abcd-efgh")
@@ -81,7 +81,7 @@ func ExampleAttributesMarshal() {
 }
 
 // This show how to decode the attributes frim a header for parsing
-func ExampleAttributesUnmarshal() {
+func ExampleAttributes_Unmarshal() {
 	var a flowfile.Attributes
 	buf := []byte("NiFiFF3\x00\x02\x00\x04path\x00\x02./\x00\bfilename\x00\tabcd-efgh")
 

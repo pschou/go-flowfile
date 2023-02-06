@@ -47,6 +47,9 @@ func NewHTTPSession(url string, client *http.Client) (*HTTPSession, error) {
 	return hs, nil
 }
 
+// Establishes or re-establishes a transaction id with NiFi to begin the
+// process of transferring flowfiles.  This is a blocking call so no new files
+// will be sent until this is completed.
 func (hs *HTTPSession) Handshake() error {
 	hs.wait.Lock()
 	defer hs.wait.Unlock()
@@ -110,8 +113,7 @@ func (hs *HTTPSession) Handshake() error {
 		}
 	}
 
-	hs.TransactionID = txid
-	hs.Server = res.Header.Get("Server")
+	hs.TransactionID, hs.Server = txid, res.Header.Get("Server")
 	return nil
 }
 
@@ -119,12 +121,15 @@ type SendConfig struct {
 	header http.Header
 }
 
+// Get a header value which is configured to be sent
 func (c *SendConfig) GetHeader(key string) (value string) {
 	if c.header == nil {
 		c.header = make(http.Header)
 	}
 	return c.header.Get(key)
 }
+
+// Set a header value which is configured to be sent
 func (c *SendConfig) SetHeader(key, value string) {
 	if c.header == nil {
 		c.header = make(http.Header)
@@ -148,11 +153,18 @@ func (hs *HTTPSession) Send(f *File, cfg *SendConfig) (err error) {
 	return
 }
 
+// Set a header value which is configured to be sent
 func (hs *HTTPSession) Close() (err error) {
-	//hs.waitGroup.Wait()
+	hs.wait.Lock()
+	defer hs.wait.Unlock()
+
+	hs.TransactionID, hs.Server = "", ""
 	return
 }
 
+// Writer ecapsulates the ability to write one or more flow files in one POST
+// request.  This must be closed upon completion of the last file send.  Note:
+// This writer does not buffer.
 type HTTPWriter struct {
 	hs        *HTTPSession
 	w         *io.PipeWriter
