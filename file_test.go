@@ -25,7 +25,7 @@ func ExampleFileWriteTo() {
 }
 
 // This example shows how to write a FlowFile and then read in a stream to make a flowfile
-func ExampleFileNewScannerScanner() {
+func ExampleFileNewScanner() {
 	wire := bytes.NewBuffer([]byte("NiFiFF3\x00\x02\x00\x04path\x00\x02./\x00\bfilename\x00\tabcd-efgh\x00\x00\x00\x00\x00\x00\x00$this is a custom string for flowfile"))
 
 	s := flowfile.NewScanner(wire)
