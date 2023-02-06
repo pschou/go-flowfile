@@ -45,7 +45,7 @@ type File struct {
 
 	cksumStatus int8
 	cksum       hash.Hash
-	closed      bool // bit to let the reciever know the up stream is really closed
+	closed      bool // bit to let the receiver know the up stream is really closed
 }
 
 // Create a new File struct from an io.Reader with size, one will want to add

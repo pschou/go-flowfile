@@ -10,7 +10,7 @@ import (
 	"strings"
 )
 
-type HTTPReciever struct {
+type HTTPReceiver struct {
 	Server           string
 	MaxPartitionSize int
 	ErrorCorrection  float64
@@ -19,16 +19,16 @@ type HTTPReciever struct {
 	//BytesSeen        uint64
 }
 
-// NewHTTPReciever interfaces with the built-in HTTP Handler and parses out the
+// NewHTTPReceiver interfaces with the built-in HTTP Handler and parses out the
 // FlowFile stream and provids a FlowFile scanner to a FlowFile handler.
-func NewHTTPReciever(handler func(*Scanner, *http.Request) error) *HTTPReciever {
-	return &HTTPReciever{handler: handler}
+func NewHTTPReceiver(handler func(*Scanner, *http.Request) error) *HTTPReceiver {
+	return &HTTPReceiver{handler: handler}
 }
 
-// NewHTTPFileReciever interfaces with the built-in HTTP Handler and parses out
+// NewHTTPFileReceiver interfaces with the built-in HTTP Handler and parses out
 // the individual FlowFiles from a stream and sends them to a FlowFile handler.
-func NewHTTPFileReciever(handler func(*File, *http.Request) error) *HTTPReciever {
-	return &HTTPReciever{handler: func(s *Scanner, r *http.Request) (err error) {
+func NewHTTPFileReceiver(handler func(*File, *http.Request) error) *HTTPReceiver {
+	return &HTTPReceiver{handler: func(s *Scanner, r *http.Request) (err error) {
 		var ff *File
 		for s.Scan() {
 			if ff, err = s.File(); err != nil {
@@ -49,11 +49,11 @@ func NewHTTPFileReciever(handler func(*File, *http.Request) error) *HTTPReciever
 // is intended to be used in a Listen Handler so as to make building out all
 // the web endpoints seemless.
 //
-//  ffReciever := flowfile.HTTPReciever{Handler: post}
-//  http.Handle("/contentListener", ffReciever)
+//  ffReceiver := flowfile.HTTPReceiver{Handler: post}
+//  http.Handle("/contentListener", ffReceiver)
 //  log.Fatal(http.ListenAndServe(":8080", nil))
 //
-func (f HTTPReciever) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (f HTTPReceiver) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if f.handler == nil {
 		w.WriteHeader(http.StatusNotImplemented)
 		return
