@@ -8,7 +8,9 @@ import (
 	"errors"
 	"fmt"
 	"hash"
+	"io"
 	"log"
+	"os"
 	"strings"
 	"sync"
 )
@@ -49,6 +51,33 @@ func (l *File) Verify() error {
 		return ErrorChecksumMismatch
 	}
 	return ErrorChecksumMissing
+}
+
+// Verify the file sent was complete and accurate
+func (l *File) VerifyParent(fp string) error {
+	if ct := l.Attrs.Get("parent-checksum-type"); ct != "" {
+		new := getChecksumFunc(ct)
+		if new == nil {
+			return fmt.Errorf("Parent checksum-type unsupported")
+		}
+		cksum := new()
+		if fh, err := os.Open(fp); err != nil {
+			return err
+		} else {
+			io.Copy(cksum, fh)
+			fh.Close()
+		}
+
+		p_ck := l.Attrs.Get("parent-checksum")
+		ck := fmt.Sprintf("%0x", cksum.Sum(nil))
+		if p_ck != ck {
+			return fmt.Errorf("Parent checksum mismatch %q != %q", p_ck, ck)
+		}
+
+		// All is well now!
+		return nil
+	}
+	return fmt.Errorf("No parent checksum-type")
 }
 
 // Internal function called before a file is read for setting up the hashing function.
