@@ -47,7 +47,7 @@ func ExampleAttributesMarshal() {
 	a.Set("filename", "abcd-efgh")
 
 	buf := bytes.NewBuffer([]byte{})
-	a.Marshal(buf)
+	a.WriteTo(buf)
 
 	fmt.Printf("attributes: %q\n", buf)
 	// Output:
@@ -55,14 +55,14 @@ func ExampleAttributesMarshal() {
 }
 
 // This show how to decode the attributes frim a header for parsing
-func ExampleAttributesUnmarshall() {
+func ExampleAttributesUnmarshal() {
 	var a, b Attributes
 	a.Set("path", "./")
 	a.Set("filename", "abcd-efgh")
 
 	buf := bytes.NewBuffer([]byte{})
-	a.Marshal(buf)
-	b.Unmarshall(buf)
+	a.WriteTo(buf)
+	b.ReadFrom(buf)
 
 	fmt.Printf("attributes: %#v\n", b)
 	// Output:

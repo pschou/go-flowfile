@@ -1,7 +1,6 @@
 package flowfile
 
 import (
-	"encoding/binary"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -12,11 +11,34 @@ import (
 )
 
 type HTTPReciever struct {
-	Handler          func(*File, *http.Request) error
-	BytesSeen        uint64
 	Server           string
 	MaxPartitionSize int
 	ErrorCorrection  float64
+
+	handler func(*Scanner, *http.Request) error
+	//BytesSeen        uint64
+}
+
+func NewHTTPReciever(handler func(*Scanner, *http.Request) error) *HTTPReciever {
+	return &HTTPReciever{handler: handler}
+}
+
+func NewHTTPFileReciever(handler func(*File, *http.Request) error) *HTTPReciever {
+	return &HTTPReciever{handler: func(s *Scanner, r *http.Request) (err error) {
+		var ff *File
+		for s.Scan() {
+			if ff, err = s.File(); err != nil {
+				return
+			}
+			if err = handler(ff, r); err != nil {
+				return
+			}
+		}
+		if err == io.EOF {
+			err = nil
+		}
+		return
+	}}
 }
 
 // Handle for accepting flow files through a http webserver.  The handle here
@@ -28,7 +50,7 @@ type HTTPReciever struct {
 //  log.Fatal(http.ListenAndServe(":8080", nil))
 //
 func (f HTTPReciever) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if f.Handler == nil {
+	if f.handler == nil {
 		w.WriteHeader(http.StatusNotImplemented)
 		return
 	}
@@ -73,38 +95,21 @@ func (f HTTPReciever) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 		switch ct := strings.ToLower(r.Header.Get("Content-Type")); ct {
 		case "application/flowfile-v3":
-			for err == nil {
-				// Loop over files as long as there is more data available:
-				var a Attributes
-				err = a.Unmarshall(Body)
-				if err != nil {
-					if err == io.EOF {
-						err = nil
-					}
-					break
-				}
-
-				var N uint64
-				if err = binary.Read(Body, binary.BigEndian, &N); err != nil {
-					err = fmt.Errorf("Error parsing file size: %s", err)
-					return
-				}
-
-				ff := &File{r: Body, n: int64(N), Attrs: a}
-				ff.cksumInit()
-				r.Body = ff
-				err = f.Handler(ff, r)
-				ff.Close()
-				if ff.closed {
-					break
-				}
+			reader := &Scanner{r: Body}
+			if err = f.handler(reader, r); err != nil {
+				return
+			}
+			reader.Close()
+			if reader.err != nil {
+				return
 			}
 		default:
 			if N, err := strconv.ParseUint(r.Header.Get("Content-Length"), 10, 64); err == nil {
-				ff := &File{r: Body, n: int64(N)}
-				r.Body = ff
-				f.Handler(ff, r)
-				ff.Close()
+				reader := &Scanner{one: &File{r: Body, n: int64(N)}}
+				if err = f.handler(reader, r); err != nil {
+					return
+				}
+				reader.Close()
 			}
 		}
 	}

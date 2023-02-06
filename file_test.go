@@ -9,14 +9,14 @@ import (
 )
 
 // Sends files out a writer, making sure the headers are sent before each file is sent.
-func ExampleSendFiles() {
+func ExampleWriteTo() {
 	wire := bytes.NewBuffer([]byte{})
 	{
 		dat := []byte("this is a custom string for flowfile")
 		ff := flowfile.New(bytes.NewReader(dat), int64(len(dat)))
 		ff.Attrs.Set("path", "./")
 		ff.Attrs.Set("filename", "abcd-efgh")
-		flowfile.SendFiles(wire, []*flowfile.File{ff})
+		ff.WriteTo(wire)
 	}
 	fmt.Printf("wire: %q\n", wire.String())
 
@@ -25,26 +25,28 @@ func ExampleSendFiles() {
 }
 
 // This example shows how to write a FlowFile and then read in a stream to make a flowfile
-func ExampleFlowFileReader() {
+func ExampleFlowFileScanner() {
 	wire := bytes.NewBuffer([]byte{})
 	{
 		dat := []byte("this is a custom string for flowfile")
 		ff := flowfile.New(bytes.NewReader(dat), int64(len(dat)))
 		ff.Attrs.Set("path", "./")
 		ff.Attrs.Set("filename", "abcd-efgh")
-		flowfile.SendFiles(wire, []*flowfile.File{ff})
+		ff.WriteTo(wire)
 	}
 
-	r := flowfile.NewReader(wire)
-	f, err := r.Read()
-	if err == nil {
-		fmt.Printf("attributes: %#v\n", f.Attrs)
+	s := flowfile.NewScanner(wire)
+	for s.Scan() {
+		f, err := s.File()
+		if err == nil {
+			fmt.Printf("attributes: %#v\n", f.Attrs)
 
-		buf := bytes.NewBuffer([]byte{})
-		buf.ReadFrom(f)
-		fmt.Printf("content: %q\n", buf.String())
-	} else {
-		log.Println("Error reading ff:", err)
+			buf := bytes.NewBuffer([]byte{})
+			buf.ReadFrom(f)
+			fmt.Printf("content: %q\n", buf.String())
+		} else {
+			log.Println("Error reading ff:", err)
+		}
 	}
 
 	// Output:

@@ -1,6 +1,7 @@
 package flowfile
 
 import (
+	"bytes"
 	"encoding/binary"
 	"fmt"
 	"io"
@@ -77,8 +78,14 @@ func (h *Attributes) Set(name, val string) *Attributes {
 	return h
 }
 
-// Parse the FlowFile attributes from binary.
-func (h *Attributes) Unmarshall(in io.Reader) (err error) {
+// Parse the FlowFile attributes from a binary slice.
+func (h *Attributes) Unmarshal(in []byte) error {
+	buf := bytes.NewBuffer([]byte{})
+	return h.ReadFrom(buf)
+}
+
+// Parse the FlowFile attributes from binary Reader.
+func (h *Attributes) ReadFrom(in io.Reader) (err error) {
 	{
 		hdr := make([]byte, 7)
 		if _, err = in.Read(hdr); err != nil {
@@ -116,8 +123,15 @@ func (h *Attributes) Unmarshall(in io.Reader) (err error) {
 	return
 }
 
-// Parse the FlowFile attributes into binary.
-func (h *Attributes) Marshal(out io.Writer) (err error) {
+// Parse the FlowFile attributes into binary slice.
+func (h *Attributes) Marshal() []byte {
+	buf := bytes.NewBuffer([]byte{})
+	h.WriteTo(buf)
+	return buf.Bytes()
+}
+
+// Parse the FlowFile attributes into binary writer.
+func (h *Attributes) WriteTo(out io.Writer) (err error) {
 	if _, err = out.Write([]byte("NiFiFF3")); err != nil {
 		return fmt.Errorf("Error writing NiFiFF3 header: %s", err)
 	}

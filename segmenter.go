@@ -26,7 +26,7 @@ func SegmentBySize(in *File, segmentSize int64) (out []*File, err error) {
 	}
 	size := in.n
 	//fmt.Println("size", size, "segment", segmentSize)
-	if size < segmentSize {
+	if segmentSize == 0 || size < segmentSize {
 		return []*File{in}, nil
 	}
 	count := (size-1)/segmentSize + 1

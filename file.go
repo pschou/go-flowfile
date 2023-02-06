@@ -37,6 +37,7 @@ type File struct {
 	Attrs Attributes
 	i     int64 // file position
 	n     int64 // bytes remaining
+	Size  int64 // total size
 
 	// one of the following must be set
 	r  io.Reader   // underlying Read
@@ -44,21 +45,22 @@ type File struct {
 
 	cksumStatus int8
 	cksum       hash.Hash
-	closed      bool
+	closed      bool // bit to let the reciever know the up stream is really closed
 }
 
-// Create a new FlowFile struct to be read from by a reader process.
+// Create a new File struct from an io.Reader with size, one will want to add
+// attributes before sending it off.
 func New(r io.Reader, size int64) *File {
+	f := &File{n: size, Size: size}
+	if rs, ok := r.(io.ReadSeeker); ok {
+		f.i, _ = rs.Seek(0, io.SeekCurrent)
+	}
 	if ra, ok := r.(io.ReaderAt); ok {
-		return &File{
-			ra: ra,
-			n:  size,
-		}
+		f.ra = ra
+	} else {
+		f.r = r
 	}
-	return &File{
-		r: r,
-		n: size,
-	}
+	return f
 }
 
 // Read will read the content from a FlowFile
@@ -89,15 +91,24 @@ func (l *File) Read(p []byte) (n int, err error) {
 	return
 }
 
-// Get the remaining size of the flow file
-func (l File) Size() int64 {
-	return l.n
+// Close the flowfile.  Generally the FlowFile is acted upon in a streaming
+// context, moving a file from one place to another.  So, in this
+// understanding, the action of closing a file is effectively removing it from
+// consideration and going to the next file.
+func (l *File) Close() (err error) {
+	if l.ra != nil {
+		if rs, ok := l.ra.(io.ReadSeeker); ok {
+			// Seek the pointer to the next reading position
+			rs.Seek(l.n, io.SeekCurrent)
+		}
+	} else {
+		_, err = io.CopyN(ioutil.Discard, l.r, l.n)
+	}
+	l.n, l.i = 0, l.i+l.n
+	return
 }
 
-// Close the flowfile
-func (l *File) Close() (err error) {
-	if l.ra == nil {
-		_, err = io.Copy(ioutil.Discard, l)
-	}
-	return
+// Encode and write the FlowFile to an io.Writer
+func (l *File) WriteTo(w io.Writer) error {
+	return writeTo(w, l)
 }

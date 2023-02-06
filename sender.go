@@ -10,12 +10,11 @@ import (
 	"sync"
 
 	"github.com/google/uuid"
-	"github.com/remeh/sizedwaitgroup"
 )
 
 // The HTTP Sender will establish a NiFi handshake and ensure that the remote
 // endpoint is listening and compatible with the current flow file format.
-type HTTPSender struct {
+type HTTPSession struct {
 	BytesSeen     uint64
 	url           string
 	client        *http.Client
@@ -27,18 +26,18 @@ type HTTPSender struct {
 	CheckSumType     string // What kind of CheckSum to use for sent files
 	ErrorCorrection  float64
 
-	hold      *bool
-	waitGroup sizedwaitgroup.SizedWaitGroup
-	wait      sync.RWMutex
+	hold *bool
+	//waitGroup sizedwaitgroup.SizedWaitGroup
+	wait sync.RWMutex
 }
 
 // Create the HTTP sender and verify that the remote side is listening.
-func NewHTTPSender(url string, client *http.Client) (*HTTPSender, error) {
-	hs := &HTTPSender{
+func NewHTTPSession(url string, client *http.Client) (*HTTPSession, error) {
+	hs := &HTTPSession{
 		url:          url,
 		client:       client,
 		CheckSumType: "SHA256",
-		waitGroup:    sizedwaitgroup.New(4),
+		//waitGroup:    sizedwaitgroup.New(4),
 	}
 
 	err := hs.Handshake()
@@ -48,7 +47,7 @@ func NewHTTPSender(url string, client *http.Client) (*HTTPSender, error) {
 	return hs, nil
 }
 
-func (hs *HTTPSender) Handshake() error {
+func (hs *HTTPSession) Handshake() error {
 	hs.wait.Lock()
 	defer hs.wait.Unlock()
 
@@ -134,47 +133,106 @@ func (c *SendConfig) SetHeader(key, value string) {
 }
 
 // Send a flow file to the remote server and return any errors back.
-// A nil return is a successful send.
-func (hs *HTTPSender) Send(f *File, cfg *SendConfig) error {
-	hs.wait.RLock()
-	hs.waitGroup.Add()
+// A nil return for error is a successful send.
+func (hs *HTTPSession) Send(f *File, cfg *SendConfig) (err error) {
+	httpWriter := hs.NewHTTPWriter(cfg)
 	defer func() {
-		hs.wait.RUnlock()
-		hs.waitGroup.Done()
+		httpWriter.Close()
+		if httpWriter.Response == nil {
+			err = fmt.Errorf("File did not send, no response")
+		} else if httpWriter.Response.StatusCode != 200 {
+			err = fmt.Errorf("File did not send successfully, code %d", httpWriter.Response.StatusCode)
+		}
 	}()
+	err = httpWriter.Write(f)
+	return
+}
 
-	f.AddChecksum(hs.CheckSumType)
-	r, w := io.Pipe()
-	defer r.Close() // Make sure pipe is terminated
-	req, err := http.NewRequest("POST", hs.url, r)
-	if err != nil {
-		return err
+func (hs *HTTPSession) Close() (err error) {
+	//hs.waitGroup.Wait()
+	return
+}
+
+type HTTPWriter struct {
+	hs        *HTTPSession
+	w         *io.PipeWriter
+	err       error
+	clientErr error
+	Response  *http.Response
+	replyLock sync.Mutex
+}
+
+// Write a flow file to the remote server and return any errors back.  One
+// cannot determine if there has been a successful send until the HTTPWriter is
+// closed.  Then the Response.StatusCode will be set with the reply from the
+// server.
+func (hw *HTTPWriter) Write(f *File) error {
+	if hw.clientErr != nil {
+		return hw.clientErr
 	}
-	go func() {
-		SendFiles(w, []*File{f})
-		w.Close()
-	}()
+	if f.Attrs.Get("checksum-type") == "" {
+		f.AddChecksum(hw.hs.CheckSumType)
+	}
+	return writeTo(hw.w, f)
+}
 
-	// Set custom http headers
-	if cfg != nil && cfg.header != nil {
-		for k, v := range cfg.header {
-			if len(v) > 0 {
-				req.Header.Set(k, v[0])
+// Close the HTTPWriter and flush the data to the stream
+func (hw *HTTPWriter) Close() (err error) {
+	//hw.hs.waitGroup.Done()
+	hw.w.Close()
+	/*
+		if hw.err == nil {
+			if err = hw.bw.Flush(); err != nil {
+				hw.w.Close()
+				return
+			}
+			if err = hw.w.Close(); err != nil {
+				return
 			}
 		}
-	}
+		hw.err = io.EOF
+		hw.replyLock.Lock()
+		//hw.replyLock.Unlock()
+	*/
+	hw.replyLock.Lock()
+	hw.replyLock.Unlock()
+	return hw.clientErr
+}
 
-	req.Header.Set("Content-Type", "application/flowfile-v3")
-	req.Header.Set("x-nifi-transfer-protocol-version", "3")
-	req.Header.Set("x-nifi-transaction-id", hs.TransactionID)
-	req.Header.Set("Transfer-Encoding", "chunked")
-	req.Header.Set("User-Agent", UserAgent)
-	res, err := hs.client.Do(req)
-	if err != nil {
-		return err
-	}
-	if res.StatusCode != 200 {
-		return fmt.Errorf("File did not send successfully")
-	}
-	return nil
+func (hs *HTTPSession) NewHTTPWriter(cfg *SendConfig) (httpWriter *HTTPWriter) {
+	r, w := io.Pipe()
+	httpWriter = &HTTPWriter{w: w, hs: hs}
+	//hs.waitGroup.Add()
+
+	httpWriter.replyLock.Lock()
+	go func() {
+		hs.wait.RLock()
+		defer hs.wait.RUnlock()
+
+		req, _ := http.NewRequest("POST", hs.url, r)
+		// We shouldn't get an error here as the session would have already
+		// established the connection details.
+
+		defer httpWriter.replyLock.Unlock()
+		defer r.Close() // Make sure pipe is terminated
+		// Set custom http headers
+		if cfg != nil && cfg.header != nil {
+			for k, v := range cfg.header {
+				if len(v) > 0 {
+					req.Header.Set(k, v[0])
+				}
+			}
+		}
+
+		req.Header.Set("Content-Type", "application/flowfile-v3")
+		req.Header.Set("x-nifi-transfer-protocol-version", "3")
+		req.Header.Set("x-nifi-transaction-id", hs.TransactionID)
+		req.Header.Set("Transfer-Encoding", "chunked")
+		req.Header.Set("User-Agent", UserAgent)
+		httpWriter.Response, httpWriter.clientErr = hs.client.Do(req)
+		if Debug {
+			log.Println("set reponse", httpWriter.Response, httpWriter.clientErr)
+		}
+	}()
+	return
 }

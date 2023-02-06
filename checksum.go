@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"hash"
+	"log"
 	"strings"
 	"sync"
 )
@@ -17,6 +18,7 @@ const (
 	cksumInit
 	cksumFailed
 	cksumPassed
+	cksumUnverified
 )
 
 var (
@@ -34,6 +36,9 @@ func (l *File) Verify() error {
 			return nil
 		}
 		l.cksumStatus = cksumFailed
+		if Debug {
+			log.Println("checksum:", fmt.Sprintf("%0x", hashval), "!= attr:", l.Attrs.Get("checksum"))
+		}
 		return ErrorChecksumMismatch
 	case cksumPassed:
 		return nil
@@ -45,10 +50,14 @@ func (l *File) Verify() error {
 
 // Internal function called before a file is read for setting up the hashing function.
 func (l *File) cksumInit() {
-	new := getChecksumFunc(l.Attrs.Get("checksum-type"))
-	if new != nil {
-		l.cksum = new()
-		l.cksumStatus = cksumInit
+	if ct := l.Attrs.Get("checksum-type"); ct != "" {
+		new := getChecksumFunc(ct)
+		if new != nil {
+			l.cksum = new()
+			l.cksumStatus = cksumInit
+		}
+	} else {
+		l.cksumStatus = cksumUnverified
 	}
 }
 
