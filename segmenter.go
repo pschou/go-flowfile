@@ -24,6 +24,7 @@ func SegmentBySize(in *File, segmentSize int64) (out []*File, err error) {
 	if in.ra == nil {
 		return nil, fmt.Errorf("Must have a reader with ReadAt capabilities to segment")
 	}
+
 	size := in.n
 	//fmt.Println("size", size, "segment", segmentSize)
 	if segmentSize == 0 || size < segmentSize {
@@ -57,7 +58,7 @@ func SegmentBySize(in *File, segmentSize int64) (out []*File, err error) {
 			en = in.n
 		}
 
-		f := &File{ra: in.ra, i: st, n: en - st, Attrs: Attributes(parentAttrs).Clone()}
+		f := &File{ra: in.ra, i: st, Size: en - st, n: en - st, Attrs: Attributes(parentAttrs).Clone()}
 		f.Attrs.Set("segment-offset", fmt.Sprintf("%d", st))
 		f.Attrs.Set("segment-index", fmt.Sprintf("%d", i))
 		f.Attrs.Set("segment-count", fmt.Sprintf("%d", count))
