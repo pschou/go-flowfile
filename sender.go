@@ -170,30 +170,21 @@ func (hw *HTTPWriter) Write(f *File) error {
 	if hw.clientErr != nil {
 		return hw.clientErr
 	}
-	if f.Attrs.Get("checksum-type") == "" {
+	if f.Size > 0 && f.Attrs.Get("checksum-type") == "" {
+		//if Debug {
+		//	fmt.Println("  doing checksum")
+		//}
 		f.AddChecksum(hw.hs.CheckSumType)
 	}
+	//if Debug {
+	//	fmt.Println("  write to stream")
+	//}
 	return writeTo(hw.w, f)
 }
 
 // Close the HTTPWriter and flush the data to the stream
 func (hw *HTTPWriter) Close() (err error) {
-	//hw.hs.waitGroup.Done()
 	hw.w.Close()
-	/*
-		if hw.err == nil {
-			if err = hw.bw.Flush(); err != nil {
-				hw.w.Close()
-				return
-			}
-			if err = hw.w.Close(); err != nil {
-				return
-			}
-		}
-		hw.err = io.EOF
-		hw.replyLock.Lock()
-		//hw.replyLock.Unlock()
-	*/
 	hw.replyLock.Lock()
 	hw.replyLock.Unlock()
 	return hw.clientErr

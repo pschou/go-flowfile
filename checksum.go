@@ -66,6 +66,9 @@ func (l *File) cksumInit() {
 // Note: The checksums cannot be added to a stream as the header would have already
 // been sent, hence why the ReadAt interface is important.
 func (f *File) AddChecksum(cksum string) error {
+	if f.Size == 0 {
+		return nil // Don't add checksum for empty files
+	}
 	new := getChecksumFunc(cksum)
 	if new == nil {
 		return fmt.Errorf("Unable to find checksum type: %q", cksum)

@@ -26,7 +26,7 @@ func writeTo(out io.Writer, f *File) (err error) {
 	}
 
 	_, err = io.Copy(out, io.MultiReader(header, f))
-	if Debug {
+	if Debug && err != nil {
 		log.Println("Failed to send contents", err)
 	}
 
