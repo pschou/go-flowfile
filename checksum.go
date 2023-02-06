@@ -1,4 +1,4 @@
-package flowfile
+package flowfile // import "github.com/pschou/go-flowfile"
 
 import (
 	"crypto/md5"

@@ -13,7 +13,7 @@
 // limitations under the License.
 
 // Package flowfile provides a set of Functions to interact with NiFi FlowFiles
-package flowfile
+package flowfile // import "github.com/pschou/go-flowfile"
 
 import (
 	"hash"
