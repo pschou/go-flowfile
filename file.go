@@ -81,20 +81,6 @@ type File struct {
 
 // Create a new File struct from an io.Reader with size.  One should add
 // attributes before writing it to a stream.
-//
-// Note: A calling method should do the due diligence of closing the inner
-// reader after the flowfile is done being used.  A good way to do this is
-// something like:
-//
-//   fh, err := os.Open(filename)
-//   if err != nil {
-//     log.Fatal(err)
-//   }
-//   defer fh.Close()
-//   f := flowfile.New(fh, fileInfo.Size())  // Construct a flowfile with size
-//   f.Attrs.Set("path", dn)      // Specify the path for the file
-//   f.Attrs.Set("filename", fn)  // Give the filename
-//   f.Attrs.GenerateUUID()       // Set a unique identifier to this file
 func New(r io.Reader, size int64) *File {
 	f := &File{n: size, Size: size}
 	if rs, ok := r.(io.ReadSeeker); ok {

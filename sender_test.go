@@ -3,9 +3,29 @@ package flowfile_test
 import (
 	"log"
 	"net/http"
+	"strings"
 
 	"github.com/pschou/go-flowfile"
 )
+
+func ExampleNewHTTPTransaction_Forwarding() {
+	txn, err := flowfile.NewHTTPTransaction("http://decimated:8080/contentListener", http.DefaultClient)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	var counter int
+	myDecimator := flowfile.NewHTTPFileReceiver(func(f *flowfile.File, r *http.Request) error {
+		counter++
+		if counter%10 == 1 {
+			return txn.Send(f, nil) // Forward only 1 of every 10 Files
+		}
+		return nil // Drop the rest
+	})
+
+	http.Handle("/contentDecimator", myDecimator) // Add the listener to a path
+	http.ListenAndServe(":8080", nil)             // Start accepting connections
+}
 
 func ExampleNewHTTPTransaction() {
 	// Create a new HTTPTransaction, used for sending batches of flowfiles
@@ -71,4 +91,19 @@ func ExampleNewHTTPReceiver() {
 
 	// Start accepting files
 	http.ListenAndServe(":8080", nil)
+}
+
+func ExampleHTTPPostWriter() {
+	ff1 := flowfile.New(strings.NewReader("test1"), 5)
+	ff2 := flowfile.New(strings.NewReader("test2"), 5)
+	ht, err := flowfile.NewHTTPTransaction("http://localhost:8080/contentListener", http.DefaultClient)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	cfg := &flowfile.SendConfig{}  // Set the sent HTTP Headers with this
+	w := ht.NewHTTPPostWriter(cfg) // Create the POST to the NiFi endpoint
+	w.Write(ff1)
+	w.Write(ff2)
+	err = w.Close() // Finalize the POST
 }

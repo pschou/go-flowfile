@@ -159,8 +159,23 @@ func (hs *HTTPTransaction) Close() (err error) {
 }
 
 // Writer ecapsulates the ability to write one or more flow files in one POST
-// request.  This must be closed upon completion of the last file send.  Note:
-// This writer does not buffer.
+// request.  This must be closed upon completion of the last File sent.
+//
+// One needs to first create an HTTPTransaction before one can create an
+// HTTPPostWriter, so the process looks like:
+//
+//   ff1 := flowfile.New(strings.NewReader("test1"), 5)
+//   ff2 := flowfile.New(strings.NewReader("test2"), 5)
+//   ht, err := flowfile.NewHTTPTransaction("http://localhost:8080/contentListener", http.DefaultClient)
+//   if err != nil {
+//     log.Fatal(err)
+//   }
+//
+//   cfg := &flowfile.SendConfig{}  // Set the sent HTTP Headers with this
+//   w := ht.NewHTTPPostWriter(cfg) // Create the POST to the NiFi endpoint
+//   w.Write(ff1)
+//   w.Write(ff2)
+//   err = w.Close() // Finalize the POST
 type HTTPPostWriter struct {
 	hs        *HTTPTransaction
 	w         io.WriteCloser

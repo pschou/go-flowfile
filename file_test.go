@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"log"
+	"os"
 
 	"github.com/pschou/go-flowfile"
 )
@@ -60,4 +61,22 @@ func ExampleNewScanner() {
 	// Output:
 	// attributes: flowfile.Attributes{flowfile.Attribute{Name:"path", Value:"./"}, flowfile.Attribute{Name:"filename", Value:"abcd-efgh"}}
 	// content: "this is a custom string for flowfile"
+}
+
+// A calling method should do the due diligence of closing the inner reader
+// after the flowfile is done being used.  A good way to do this is something
+// like:
+func ExampleNew() {
+	dir, filename := "./", "myfile.dat"
+	fh, err := os.Open(filename)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer fh.Close() // Ensure the file is closed when the function exits
+	fileInfo, _ := fh.Stat()
+	f := flowfile.New(fh, fileInfo.Size()) // Construct a flowfile with size
+	f.Attrs.Set("path", dir)               // Specify the path for the file
+	f.Attrs.Set("filename", filename)      // Give the filename
+	f.Attrs.GenerateUUID()                 // Set a unique identifier to this file
+
 }

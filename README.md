@@ -19,9 +19,9 @@ func main() {
   // Setup a receiver method to deal with incoming flowfiles
   myFilter := flowfile.NewHTTPFileReceiver(func(f *flowfile.File, r *http.Request) error {
     if f.Attrs.Get("project") == "ProjectA" {
-      return txn.Send(f)  // Forward only ProjectA related FlowFiles
+      return txn.Send(f, nil)  // Forward only ProjectA related FlowFiles
     }
-    return nil            // Drop the rest
+    return nil                 // Drop the rest
   })
   http.Handle("/contentListener", myFilter)  // Add the listener to a path
   http.ListenAndServe(":8080", nil)          // Start accepting connections
@@ -42,13 +42,13 @@ func main() {
   myDecimator:= flowfile.NewHTTPFileReceiver(func(f *flowfile.File, r *http.Request) error {
     counter++
     if counter%10 == 1 {
-      return txn.Send(f)  // Forward only 1 of every 10 Files
+      return txn.Send(f, nil)  // Forward only 1 of every 10 Files
     }
-    return nil            // Drop the rest
+    return nil                 // Drop the rest
   })
 
   http.Handle("/contentDecimator", myDecimator)  // Add the listener to a path
-  http.ListenAndServe(":8080", nil)          // Start accepting connections
+  http.ListenAndServe(":8080", nil)              // Start accepting connections
 }
 ```
 
