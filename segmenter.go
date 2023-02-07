@@ -30,7 +30,7 @@ func SegmentBySize(in *File, segmentSize int64) (out []*File, err error) {
 	if segmentSize == 0 || size < segmentSize {
 		return []*File{in}, nil
 	}
-	count := (size-1)/segmentSize + 1
+	count := int((size-1)/segmentSize + 1)
 
 	// Make sure parent attributes are set
 	puuid := in.Attrs.Get("uuid")
@@ -51,8 +51,15 @@ func SegmentBySize(in *File, segmentSize int64) (out []*File, err error) {
 		}
 		parentAttrs[i].Value = attrs[i].Value
 	}
+
+	if in.openCount == nil {
+		in.openCount = &count
+	} else {
+		*in.openCount = *in.openCount + count - 1
+	}
+
 	st, en := int64(0), in.i+segmentSize
-	for i := int64(0); i < count; i++ {
+	for i := 0; i < count; i++ {
 		st, en = en, en+segmentSize
 		if en > size {
 			en = size
@@ -72,7 +79,6 @@ func SegmentBySize(in *File, segmentSize int64) (out []*File, err error) {
 		f.Attrs.GenerateUUID()
 		out = append(out, f)
 	}
-	*in.openCount = *in.openCount + int(count) - 1
 	in.ra, in.n = nil, 0
 	return
 }

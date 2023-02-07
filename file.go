@@ -95,7 +95,7 @@ func (l *File) Read(p []byte) (n int, err error) {
 func (l *File) Close() (err error) {
 	switch {
 	case l.ra != nil:
-		if rc, ok := l.ra.(io.Closer); ok && *l.openCount >= 1 {
+		if rc, ok := l.ra.(io.Closer); ok && l.openCount != nil {
 			if *l.openCount == 1 {
 				rc.Close()
 			}
@@ -108,7 +108,7 @@ func (l *File) Close() (err error) {
 
 	case l.r != nil:
 		_, err = io.CopyN(ioutil.Discard, l.r, l.n)
-		if rc, ok := l.r.(io.Closer); ok && *l.openCount >= 1 {
+		if rc, ok := l.r.(io.Closer); ok && l.openCount != nil {
 			if *l.openCount == 1 {
 				rc.Close()
 			}
