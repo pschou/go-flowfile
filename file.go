@@ -12,37 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// GoLang module flowfile provides a set of tools to interact with NiFi
-// FlowFiles at a low level.  It's been finely tuned to handle the streaming
-// context best as memory and disk often have limitations.
-//
-// This module was built to be both simple to use and extremely low level set
-// of tools to work with FlowFiles at wire speed.  Here is an example of a
-// basic filtering and forwarding method:
-//
-//   // Create a endpoint to send FlowFiles to:
-//   txn, err := flowfile.NewHTTPTransaction("http://localhost:8080/contentListener", http.DefaultClient)
-//   if err != nil {
-//     log.Fatal(err)
-//   }
-//
-//   // Setup a receiver method to deal with incoming flowfiles
-//   myFilter := flowfile.NewHTTPFileReceiver(func(f *flowfile.File, r *http.Request) error {
-//     // Logic here starts at the first packet in the stream, by the time a decision is
-//     // made the streams are able to be connected together to avoid all local caches.
-//     if f.Attrs.Get("project") == "ProjectA" {
-//       return txn.Send(f)  // Forward only ProjectA related FlowFiles
-//     }
-//     return nil            // Drop the rest
-//   })
-//
-//   http.Handle("/contentListener", myFilter)  // Add the listener to a path
-//   http.ListenAndServe(":8080", nil)          // Start accepting connections
-//
-//
-// The complexity of the decision logic can be as complex or as simple as one
-// desires and consume on one or more ports / listening paths, and send to as
-// many upstream servers as desired with concurrency.
+// This module was built to be a light weight connection handling tool for
+// sending and receiving FlowFiles via an HTTP/HTTPS exchange.  When the HTTPS
+// method is used, the client MUST also present a valid client certificate.
 //
 // # About FlowFiles
 //

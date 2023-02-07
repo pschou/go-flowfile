@@ -57,16 +57,7 @@ decision is made the streams are able to be connected together to avoid all
 local caches.
 
 The complexity of the decision logic can be as complex or as simple as one
-desires and consume on one or more ports / listening paths, and send to as
+desires, consume on one or more ports / listening paths, and send to as
 many upstream servers as desired with concurrency.
-
-# About FlowFiles
-
-FlowFiles are at the heart of Apache NiFi and its flow-based design. A
-FlowFile is a data record, which consists of a pointer to its content
-(payload) and attributes to support the content, that is associated with one
-or more provenance events. The attributes are key/value pairs that act as
-the metadata for the FlowFile, such as the FlowFile filename. The content is
-the actual data or the payload of the file.
 
 For more documentation go to https://pkg.go.dev/github.com/pschou/go-flowfile .
