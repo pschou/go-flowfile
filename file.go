@@ -25,6 +25,47 @@
 // the metadata for the FlowFile, such as the FlowFile filename. The content is
 // the actual data or the payload of the file.
 //
+// More info: https://nifi.apache.org/docs/nifi-docs/html/nifi-in-depth.html
+//
+// # What is a FlowFile
+//
+// A FlowFile is a logical notion that correlates a piece of data with a set of
+// Attributes about that data. Such attributes include a FlowFile's unique
+// identifier, as well as its name, size, and any number of other flow-specific
+// values. While the contents and attributes of a FlowFile can change, the
+// FlowFile object is immutable. Modifications to a FlowFile are made possible
+// by the ProcessSession.
+//
+// The core attributes for FlowFiles are defined in the
+// org.apache.nifi.flowfile.attributes.CoreAttributes enum. The most common
+// attributes you'll see are filename, path and uuid. The string in quotes is
+// the value of the attribute within the CoreAttributes enum.
+//
+// - Filename ("filename"): The filename of the FlowFile. The filename should
+// not contain any directory structure.
+//
+// - UUID ("uuid"): A unique universally unique identifier (UUID) assigned to
+// this FlowFile.
+//
+// - Path ("path"): The FlowFile's path indicates the relative directory to
+// which a FlowFile belongs and does not contain the filename.
+//
+// - Absolute Path ("absolute.path"): The FlowFile's absolute path indicates
+// the absolute directory to which a FlowFile belongs and does not contain the
+// filename.
+//
+// - Priority ("priority"): A numeric value indicating the FlowFile priority.
+//
+// - MIME Type ("mime.type"): The MIME Type of this FlowFile.
+//
+// - Discard Reason ("discard.reason"): Specifies the reason that a FlowFile is
+// being discarded.
+//
+// - Alternative Identifier ("alternate.identifier"): Indicates an identifier
+// other than the FlowFile's UUID that is known to refer to this FlowFile.
+//
+// More info: https://docs.cloudera.com/HDPDocuments/HDF3/HDF-3.0.3/bk_developer-guide/content/flowfile.html
+//
 // # Implementations
 //
 // The `File` entity represents the flowfile.  The FlowFile Attributes can be
