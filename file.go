@@ -45,13 +45,14 @@ type File struct {
 
 	cksumStatus int8
 	cksum       hash.Hash
-	closed      bool // bit to let the receiver know the up stream is really closed
+	openCount   *int
 }
 
-// Create a new File struct from an io.Reader with size, one will want to add
-// attributes before sending it off.
+// Create a new File struct from an io.Reader with size.  One should add
+// attributes before writing it to a stream.
 func New(r io.Reader, size int64) *File {
-	f := &File{n: size, Size: size}
+	ct := 1
+	f := &File{n: size, Size: size, openCount: &ct}
 	if rs, ok := r.(io.ReadSeeker); ok {
 		f.i, _ = rs.Seek(0, io.SeekCurrent)
 	}
@@ -76,10 +77,6 @@ func (l *File) Read(p []byte) (n int, err error) {
 	} else {
 		n, err = l.r.Read(p)
 	}
-	if err == io.EOF {
-		// Mark the closed bit
-		l.closed = true
-	}
 	l.n -= int64(n)
 	l.i += int64(n)
 	if l.cksumStatus == cksumInit {
@@ -96,14 +93,29 @@ func (l *File) Read(p []byte) (n int, err error) {
 // understanding, the action of closing a file is effectively removing it from
 // consideration and going to the next file.
 func (l *File) Close() (err error) {
-	if l.ra != nil {
-		if rs, ok := l.ra.(io.ReadSeeker); ok {
-			// Seek the pointer to the next reading position
-			rs.Seek(l.n, io.SeekCurrent)
+	switch {
+	case l.ra != nil:
+		if rc, ok := l.ra.(io.Closer); ok && *l.openCount >= 1 {
+			if *l.openCount == 1 {
+				rc.Close()
+			}
+			*l.openCount = *l.openCount - 1
 		}
-	} else {
+		// else if rs, ok := l.ra.(io.ReadSeeker); ok {
+		// Seek the pointer to the next reading position
+		//	rs.Seek(l.n, io.SeekCurrent)
+		// }
+
+	case l.r != nil:
 		_, err = io.CopyN(ioutil.Discard, l.r, l.n)
+		if rc, ok := l.r.(io.Closer); ok && *l.openCount >= 1 {
+			if *l.openCount == 1 {
+				rc.Close()
+			}
+			*l.openCount = *l.openCount - 1
+		}
 	}
+	// Adjust the counters
 	l.n, l.i = 0, l.i+l.n
 	return
 }

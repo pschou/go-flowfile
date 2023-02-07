@@ -7,9 +7,9 @@ import (
 	"github.com/pschou/go-flowfile"
 )
 
-func ExampleNewHTTPSession() {
-	// Create a new HTTPSession, used for sending batches of flowfiles
-	hs, err := flowfile.NewHTTPSession("http://localhost:8080/contentListener", http.DefaultClient)
+func ExampleNewHTTPTransaction() {
+	// Create a new HTTPTransaction, used for sending batches of flowfiles
+	hs, err := flowfile.NewHTTPTransaction("http://localhost:8080/contentListener", http.DefaultClient)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -21,8 +21,8 @@ func ExampleNewHTTPSession() {
 }
 
 func ExampleSendConfig() {
-	// Create a new HTTPSession, used for sending batches of flowfiles
-	hs, err := flowfile.NewHTTPSession("http://localhost:8080/contentListener", http.DefaultClient)
+	// Create a new HTTPTransaction, used for sending batches of flowfiles
+	hs, err := flowfile.NewHTTPTransaction("http://localhost:8080/contentListener", http.DefaultClient)
 	if err != nil {
 		log.Fatal(err)
 	}

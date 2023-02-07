@@ -14,7 +14,7 @@ import (
 
 // The HTTP Sender will establish a NiFi handshake and ensure that the remote
 // endpoint is listening and compatible with the current flow file format.
-type HTTPSession struct {
+type HTTPTransaction struct {
 	BytesSeen     uint64
 	url           string
 	client        *http.Client
@@ -32,8 +32,8 @@ type HTTPSession struct {
 }
 
 // Create the HTTP sender and verify that the remote side is listening.
-func NewHTTPSession(url string, client *http.Client) (*HTTPSession, error) {
-	hs := &HTTPSession{
+func NewHTTPTransaction(url string, client *http.Client) (*HTTPTransaction, error) {
+	hs := &HTTPTransaction{
 		url:          url,
 		client:       client,
 		CheckSumType: "SHA256",
@@ -50,7 +50,7 @@ func NewHTTPSession(url string, client *http.Client) (*HTTPSession, error) {
 // Establishes or re-establishes a transaction id with NiFi to begin the
 // process of transferring flowfiles.  This is a blocking call so no new files
 // will be sent until this is completed.
-func (hs *HTTPSession) Handshake() error {
+func (hs *HTTPTransaction) Handshake() error {
 	hs.wait.Lock()
 	defer hs.wait.Unlock()
 
@@ -139,8 +139,8 @@ func (c *SendConfig) SetHeader(key, value string) {
 
 // Send a flow file to the remote server and return any errors back.
 // A nil return for error is a successful send.
-func (hs *HTTPSession) Send(f *File, cfg *SendConfig) (err error) {
-	httpWriter := hs.NewHTTPWriter(cfg)
+func (hs *HTTPTransaction) Send(f *File, cfg *SendConfig) (err error) {
+	httpWriter := hs.NewHTTPPostWriter(cfg)
 	defer func() {
 		httpWriter.Close()
 		if httpWriter.Response == nil {
@@ -154,7 +154,7 @@ func (hs *HTTPSession) Send(f *File, cfg *SendConfig) (err error) {
 }
 
 // Set a header value which is configured to be sent
-func (hs *HTTPSession) Close() (err error) {
+func (hs *HTTPTransaction) Close() (err error) {
 	hs.wait.Lock()
 	defer hs.wait.Unlock()
 
@@ -165,8 +165,8 @@ func (hs *HTTPSession) Close() (err error) {
 // Writer ecapsulates the ability to write one or more flow files in one POST
 // request.  This must be closed upon completion of the last file send.  Note:
 // This writer does not buffer.
-type HTTPWriter struct {
-	hs        *HTTPSession
+type HTTPPostWriter struct {
+	hs        *HTTPTransaction
 	w         *io.PipeWriter
 	err       error
 	clientErr error
@@ -175,10 +175,10 @@ type HTTPWriter struct {
 }
 
 // Write a flow file to the remote server and return any errors back.  One
-// cannot determine if there has been a successful send until the HTTPWriter is
+// cannot determine if there has been a successful send until the HTTPPostWriter is
 // closed.  Then the Response.StatusCode will be set with the reply from the
 // server.
-func (hw *HTTPWriter) Write(f *File) error {
+func (hw *HTTPPostWriter) Write(f *File) error {
 	if hw.clientErr != nil {
 		return hw.clientErr
 	}
@@ -194,17 +194,17 @@ func (hw *HTTPWriter) Write(f *File) error {
 	return writeTo(hw.w, f)
 }
 
-// Close the HTTPWriter and flush the data to the stream
-func (hw *HTTPWriter) Close() (err error) {
+// Close the HTTPPostWriter and flush the data to the stream
+func (hw *HTTPPostWriter) Close() (err error) {
 	hw.w.Close()
 	hw.replyLock.Lock()
 	hw.replyLock.Unlock()
 	return hw.clientErr
 }
 
-func (hs *HTTPSession) NewHTTPWriter(cfg *SendConfig) (httpWriter *HTTPWriter) {
+func (hs *HTTPTransaction) NewHTTPPostWriter(cfg *SendConfig) (httpWriter *HTTPPostWriter) {
 	r, w := io.Pipe()
-	httpWriter = &HTTPWriter{w: w, hs: hs}
+	httpWriter = &HTTPPostWriter{w: w, hs: hs}
 	//hs.waitGroup.Add()
 
 	httpWriter.replyLock.Lock()

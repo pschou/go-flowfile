@@ -44,17 +44,17 @@ func ExampleNewScanner() {
 	wire := bytes.NewBuffer([]byte("NiFiFF3\x00\x02\x00\x04path\x00\x02./\x00\bfilename\x00\tabcd-efgh\x00\x00\x00\x00\x00\x00\x00$this is a custom string for flowfile"))
 
 	s := flowfile.NewScanner(wire)
-	for s.Scan() {
+	for s.Scan() { // Scan for another FlowFile in the stream
 		f, err := s.File()
-		if err == nil {
-			fmt.Printf("attributes: %#v\n", f.Attrs)
-
-			buf := bytes.NewBuffer([]byte{})
-			buf.ReadFrom(f)
-			fmt.Printf("content: %q\n", buf.String())
-		} else {
-			log.Println("Error reading ff:", err)
+		if err != nil {
+			log.Fatal("Error parsing ff:", err)
 		}
+
+		fmt.Printf("attributes: %#v\n", f.Attrs)
+
+		buf := bytes.NewBuffer([]byte{})
+		buf.ReadFrom(f)
+		fmt.Printf("content: %q\n", buf.String())
 	}
 
 	// Output:
