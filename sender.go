@@ -210,7 +210,7 @@ func (hw *HTTPPostWriter) Close() (err error) {
 // NewHTTPPostWriter creates a POST to a NiFi listening endpoint and allows
 // multiple files to be written to the endpoint at one time.  This reduces
 // additional overhead (with fewer HTTP reponses) and decreases latency (by
-// instead putting pressure on the TCP payload size).
+// instead putting pressure on TCP with smaller payload sizes).
 //
 // However, HTTPPostWriter increases the chances of failures as all the sent
 // files will be marked as failed if the the HTTP POST is not a success.
