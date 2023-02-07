@@ -9,6 +9,7 @@ of tools to work with FlowFiles at wire speed.  Here is an example of a
 basic filtering and forwarding method:
 
 ```golang
+func main() {
   // Create a endpoint to send FlowFiles to:
   txn, err := flowfile.NewHTTPTransaction("http://target:8080/contentListener", http.DefaultClient)
   if err != nil {
@@ -22,6 +23,20 @@ basic filtering and forwarding method:
     }
     return nil            // Drop the rest
   })
+  http.Handle("/contentListener", myFilter)  // Add the listener to a path
+  http.ListenAndServe(":8080", nil)          // Start accepting connections
+}
+```
+
+Another program example of building a NiFi routing program, this time it only
+forwards 1 of every 10 Files:
+
+```golang
+func main() {
+  txn, err := flowfile.NewHTTPTransaction("http://decimated:8080/contentListener", http.DefaultClient)
+  if err != nil {
+    log.Fatal(err)
+  }
 
   var counter int
   myDecimator:= flowfile.NewHTTPFileReceiver(func(f *flowfile.File, r *http.Request) error {
@@ -32,9 +47,9 @@ basic filtering and forwarding method:
     return nil            // Drop the rest
   })
 
-  http.Handle("/contentListener", myFilter)  // Add the listener to a path
   http.Handle("/contentDecimator", myDecimator)  // Add the listener to a path
   http.ListenAndServe(":8080", nil)          // Start accepting connections
+}
 ```
 
 Note: The logic here starts at the first packet in the stream, by the time a
