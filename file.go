@@ -138,8 +138,10 @@ func New(r io.Reader, size int64) *File {
 // If the flowfile has a ReaderAt interface, one can reset the
 // reader to the start for reading again
 func (l *File) Reset() error {
-	if l.ra != nil {
-		l.i, l.n = l.i-(l.Size-l.n), l.Size
+	if l.Size == 0 {
+		return nil
+	} else if l.ra != nil {
+		l.i, l.n = l.i+l.n-l.Size, l.Size
 		return nil
 	}
 	return fmt.Errorf("Unable to Reset a non-ReadAt reader")
