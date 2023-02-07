@@ -10,6 +10,8 @@ import (
 	"strings"
 )
 
+// Implements http.Handler and can be used with the GoLang built-in http module:
+//   https://pkg.go.dev/net/http#Handler
 type HTTPReceiver struct {
 	Server           string
 	MaxPartitionSize int
