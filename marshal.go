@@ -71,7 +71,9 @@ func Parse(in io.Reader) (f *File, err error) {
 // Parse FlowFile formatted byte slice into a File struct for processing.
 //
 // Note: This is not preferred as it can cause memory bloat.
-func Unmarshal(dat []byte) (f *File, err error) {
-	f = new(File)
-	return Parse(bytes.NewBuffer(dat))
+func Unmarshal(dat []byte, f *File) (err error) {
+	var ff *File
+	ff, err = Parse(bytes.NewBuffer(dat))
+	*f = *ff
+	return
 }

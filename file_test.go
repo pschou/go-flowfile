@@ -29,11 +29,12 @@ func ExampleFile_WriteTo() {
 func ExampleUnmarshal() {
 	dat := []byte("NiFiFF3\x00\x02\x00\x04path\x00\x02./\x00\bfilename\x00\tabcd-efgh\x00\x00\x00\x00\x00\x00\x00$this is a custom string for flowfile")
 
-	f, _ := flowfile.Unmarshal(dat)
+	var f flowfile.File
+	flowfile.Unmarshal(dat, &f)
 	fmt.Printf("Attrs: %#v\n", f.Attrs)
 
 	buf := bytes.NewBuffer([]byte{})
-	buf.ReadFrom(f)
+	buf.ReadFrom(&f)
 	fmt.Printf("content: %q\n", buf.String())
 	// Output:
 	// Attrs: flowfile.Attributes{flowfile.Attribute{Name:"path", Value:"./"}, flowfile.Attribute{Name:"filename", Value:"abcd-efgh"}}

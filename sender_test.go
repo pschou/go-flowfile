@@ -35,9 +35,10 @@ func ExampleNewHTTPTransaction() {
 	}
 
 	dat := []byte("NiFiFF3\x00\x02\x00\x04path\x00\x02./\x00\bfilename\x00\tabcd-efgh\x00\x00\x00\x00\x00\x00\x00$this is a custom string for flowfile")
-	ff, _ := flowfile.Unmarshal(dat)
+	var ff flowfile.File
+	err = flowfile.Unmarshal(dat, &ff)
 
-	err = hs.Send(ff, nil)
+	err = hs.Send(&ff, nil)
 }
 
 func ExampleSendConfig() {
@@ -48,11 +49,12 @@ func ExampleSendConfig() {
 	}
 
 	dat := []byte("NiFiFF3\x00\x02\x00\x04path\x00\x02./\x00\bfilename\x00\tabcd-efgh\x00\x00\x00\x00\x00\x00\x00$this is a custom string for flowfile")
-	ff, _ := flowfile.Unmarshal(dat)
+	var ff flowfile.File
+	err = flowfile.Unmarshal(dat, &ff)
 
 	sendConfig := new(flowfile.SendConfig)
 	sendConfig.SetHeader("X-Forwarded-For", "1.2.3.4:5678")
-	err = hs.Send(ff, sendConfig)
+	err = hs.Send(&ff, sendConfig)
 }
 
 func ExampleNewHTTPFileReceiver() {
