@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"path"
 
 	"github.com/google/uuid"
 )
@@ -64,6 +65,10 @@ func (h *Attributes) GenerateUUID() string {
 // attribute name and the second is the attribute value.  It returns the
 // attributes for function stacking.
 func (h *Attributes) Set(name, val string) *Attributes {
+	if name == "filename" {
+		// Sanitize the filename to make sure malformed data is misused
+		_, val = path.Split(val)
+	}
 	attrs := []Attribute(*h)
 	for i := range attrs {
 		if attrs[i].Name == name {
