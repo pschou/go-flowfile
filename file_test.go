@@ -10,14 +10,14 @@ import (
 )
 
 // Sends files out a writer, making sure the headers are sent before each file is sent.
-func ExampleFile_WriteTo() {
+func ExampleFile_WriteFile() {
 	wire := bytes.NewBuffer([]byte{})
 	{
 		dat := []byte("this is a custom string for flowfile")
 		ff := flowfile.New(bytes.NewReader(dat), int64(len(dat)))
 		ff.Attrs.Set("path", "./")
 		ff.Attrs.Set("filename", "abcd-efgh")
-		ff.WriteTo(wire)
+		ff.WriteFile(wire)
 	}
 	fmt.Printf("wire: %q\n", wire.String())
 

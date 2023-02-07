@@ -4,9 +4,9 @@ flowfile is a GoLang module providing a set of tools to interact with NiFi
 FlowFiles at a low level.  It's been finely tuned to handle the streaming
 context best as memory and disk often have limitations.
 
-This module was built to be both simple to use and extremely low level set
-of tools to work with FlowFiles at wire speed.  Here is an example of a
-basic filtering and forwarding method:
+This module was built to be both simple to use and operate at a low level (at
+the bytes) to work with FlowFiles at wire speed.  Here is an example of a how a basic
+filtering and forwarding method would be written:
 
 ```golang
 func main() {
