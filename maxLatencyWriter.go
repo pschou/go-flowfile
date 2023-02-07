@@ -28,9 +28,6 @@ func (m *maxLatencyWriter) flushLoop() {
 	for {
 		select {
 		case <-m.done:
-			m.mu.Lock()
-			m.dst.Flush()
-			m.mu.Unlock()
 			return
 		case <-t.C:
 			m.mu.Lock()
@@ -40,4 +37,10 @@ func (m *maxLatencyWriter) flushLoop() {
 	}
 }
 
-func (m *maxLatencyWriter) Close() error { m.done <- true; return m.c.Close() }
+func (m *maxLatencyWriter) Close() error {
+	m.done <- true
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.dst.Flush()
+	return m.c.Close()
+}
