@@ -10,25 +10,36 @@ basic filtering and forwarding method:
 
 ```golang
   // Create a endpoint to send FlowFiles to:
-  txn, err := flowfile.NewHTTPTransaction("http://localhost:8080/contentListener", http.DefaultClient)
+  txn, err := flowfile.NewHTTPTransaction("http://target:8080/contentListener", http.DefaultClient)
   if err != nil {
     log.Fatal(err)
   }
 
   // Setup a receiver method to deal with incoming flowfiles
   myFilter := flowfile.NewHTTPFileReceiver(func(f *flowfile.File, r *http.Request) error {
-    // Logic here starts at the first packet in the stream, by the time a decision is
-    // made the streams are able to be connected together to avoid all local caches.
     if f.Attrs.Get("project") == "ProjectA" {
       return txn.Send(f)  // Forward only ProjectA related FlowFiles
     }
     return nil            // Drop the rest
   })
 
+  var counter int
+  myDecimator:= flowfile.NewHTTPFileReceiver(func(f *flowfile.File, r *http.Request) error {
+    counter++
+    if counter%10 == 1 {
+      return txn.Send(f)  // Forward only 1 of every 10 Files
+    }
+    return nil            // Drop the rest
+  })
+
   http.Handle("/contentListener", myFilter)  // Add the listener to a path
+  http.Handle("/contentDecimator", myDecimator)  // Add the listener to a path
   http.ListenAndServe(":8080", nil)          // Start accepting connections
 ```
 
+Note: The logic here starts at the first packet in the stream, by the time a
+decision is made the streams are able to be connected together to avoid all
+local caches.
 
 The complexity of the decision logic can be as complex or as simple as one
 desires and consume on one or more ports / listening paths, and send to as
