@@ -1,6 +1,7 @@
 package flowfile // import "github.com/pschou/go-flowfile"
 
 import (
+	"bufio"
 	"fmt"
 	"io"
 	"log"
@@ -8,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/google/uuid"
 )
@@ -111,7 +113,8 @@ func (hs *HTTPTransaction) Handshake() error {
 }
 
 type SendConfig struct {
-	header http.Header
+	header        http.Header
+	FlushInterval time.Duration
 }
 
 // Get a header value which is configured to be sent
@@ -160,7 +163,7 @@ func (hs *HTTPTransaction) Close() (err error) {
 // This writer does not buffer.
 type HTTPPostWriter struct {
 	hs        *HTTPTransaction
-	w         *io.PipeWriter
+	w         io.WriteCloser
 	err       error
 	clientErr error
 	Response  *http.Response
@@ -176,14 +179,8 @@ func (hw *HTTPPostWriter) Write(f *File) error {
 		return hw.clientErr
 	}
 	if f.Size > 0 && f.Attrs.Get("checksum-type") == "" {
-		//if Debug {
-		//	fmt.Println("  doing checksum")
-		//}
 		f.AddChecksum(hw.hs.CheckSumType)
 	}
-	//if Debug {
-	//	fmt.Println("  write to stream")
-	//}
 	return writeTo(hw.w, f)
 }
 
@@ -195,40 +192,74 @@ func (hw *HTTPPostWriter) Close() (err error) {
 	return hw.clientErr
 }
 
+// NewHTTPPostWriter creates a POST to a NiFi listening endpoint and allows
+// multiple files to be written to the endpoint at one time.  This reduces
+// additional overhead (with fewer HTTP reponses) and decreases latency (by
+// instead putting pressure on the TCP payload size).
+//
+// However, HTTPPostWriter increases the chances of failures as all the sent
+// files will be marked as failed if the the HTTP POST is not a success.
 func (hs *HTTPTransaction) NewHTTPPostWriter(cfg *SendConfig) (httpWriter *HTTPPostWriter) {
 	r, w := io.Pipe()
 	httpWriter = &HTTPPostWriter{w: w, hs: hs}
-	//hs.waitGroup.Add()
-
 	httpWriter.replyLock.Lock()
-	go func() {
-		hs.wait.RLock()
-		defer hs.wait.RUnlock()
+	go doPost(hs, httpWriter, r, cfg)
+	return
+}
 
-		req, _ := http.NewRequest("POST", hs.url, r)
-		// We shouldn't get an error here as the session would have already
-		// established the connection details.
+// NewHTTPBufferedPostWriter creates a POST to a NiFi listening endpoint and
+// allows multiple files to be written to the endpoint at one time.  This
+// reduces additional overhead (with fewer HTTP reponses) and decreases
+// latency.  Additionally, the added buffering helps with constructing larger
+// packets, thus further reducing TCP overhead.
+//
+// However, HTTPPostWriter increases the chances of failures as all the sent
+// files will be marked as failed if the the HTTP POST is not a success.
+func (hs *HTTPTransaction) NewHTTPBufferedPostWriter(cfg *SendConfig) (httpWriter *HTTPPostWriter) {
+	r, w := io.Pipe()
+	if cfg.FlushInterval == 0 {
+		cfg.FlushInterval = 400 * time.Millisecond
+	}
+	mlw := &maxLatencyWriter{
+		dst:     bufio.NewWriter(w),
+		c:       w,
+		latency: cfg.FlushInterval,
+		done:    make(chan bool),
+	}
+	go mlw.flushLoop()
 
-		defer httpWriter.replyLock.Unlock()
-		defer r.Close() // Make sure pipe is terminated
-		// Set custom http headers
-		if cfg != nil && cfg.header != nil {
-			for k, v := range cfg.header {
-				if len(v) > 0 {
-					req.Header.Set(k, v[0])
-				}
+	httpWriter = &HTTPPostWriter{w: mlw, hs: hs}
+	httpWriter.replyLock.Lock()
+	go doPost(hs, httpWriter, r, cfg)
+	return
+}
+
+func doPost(hs *HTTPTransaction, httpWriter *HTTPPostWriter, r io.ReadCloser, cfg *SendConfig) {
+	hs.wait.RLock()
+	defer hs.wait.RUnlock()
+
+	req, _ := http.NewRequest("POST", hs.url, r)
+	// We shouldn't get an error here as the session would have already
+	// established the connection details.
+
+	defer httpWriter.replyLock.Unlock()
+	defer r.Close() // Make sure pipe is terminated
+	// Set custom http headers
+	if cfg != nil && cfg.header != nil {
+		for k, v := range cfg.header {
+			if len(v) > 0 {
+				req.Header.Set(k, v[0])
 			}
 		}
+	}
 
-		req.Header.Set("Content-Type", "application/flowfile-v3")
-		req.Header.Set("x-nifi-transfer-protocol-version", "3")
-		req.Header.Set("x-nifi-transaction-id", hs.TransactionID)
-		req.Header.Set("Transfer-Encoding", "chunked")
-		req.Header.Set("User-Agent", UserAgent)
-		httpWriter.Response, httpWriter.clientErr = hs.client.Do(req)
-		if Debug {
-			log.Println("set reponse", httpWriter.Response, httpWriter.clientErr)
-		}
-	}()
-	return
+	req.Header.Set("Content-Type", "application/flowfile-v3")
+	req.Header.Set("x-nifi-transfer-protocol-version", "3")
+	req.Header.Set("x-nifi-transaction-id", hs.TransactionID)
+	req.Header.Set("Transfer-Encoding", "chunked")
+	req.Header.Set("User-Agent", UserAgent)
+	httpWriter.Response, httpWriter.clientErr = hs.client.Do(req)
+	if Debug {
+		log.Println("set reponse", httpWriter.Response, httpWriter.clientErr)
+	}
 }
