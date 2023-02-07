@@ -13,7 +13,6 @@ import (
 type HTTPReceiver struct {
 	Server           string
 	MaxPartitionSize int
-	ErrorCorrection  float64
 
 	handler func(*Scanner, *http.Request) error
 	//BytesSeen        uint64

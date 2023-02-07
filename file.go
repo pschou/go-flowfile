@@ -16,6 +16,7 @@
 package flowfile // import "github.com/pschou/go-flowfile"
 
 import (
+	"fmt"
 	"hash"
 	"io"
 	"io/ioutil"
@@ -62,6 +63,16 @@ func New(r io.Reader, size int64) *File {
 		f.r = r
 	}
 	return f
+}
+
+// If the flowfile has a ReaderAt interface, one can reset the
+// reader to the start for reading again
+func (l *File) Reset() error {
+	if l.ra != nil {
+		l.i, l.n = l.i-(l.Size-l.n), l.Size
+		return nil
+	}
+	return fmt.Errorf("Unable to Reset a non-ReadAt reader")
 }
 
 // Read will read the content from a FlowFile

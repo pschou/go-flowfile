@@ -24,7 +24,6 @@ type HTTPTransaction struct {
 	// Non-standard NiFi entities supported by this library
 	MaxPartitionSize int    // Maximum partition size for partitioned file
 	CheckSumType     string // What kind of CheckSum to use for sent files
-	ErrorCorrection  float64
 
 	hold *bool
 	//waitGroup sizedwaitgroup.SizedWaitGroup
@@ -104,12 +103,6 @@ func (hs *HTTPTransaction) Handshake() error {
 			if Debug {
 				log.Println("Unable to parse Max-Partition-Size", err)
 			}
-		}
-	}
-	if v := res.Header.Get("error-correction"); v != "" {
-		errorCorrection, err := strconv.ParseFloat(v, 64)
-		if err != nil {
-			hs.ErrorCorrection = errorCorrection
 		}
 	}
 
