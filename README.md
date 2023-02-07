@@ -52,9 +52,13 @@ func main() {
 }
 ```
 
-Note: The logic here starts at the first packet in the stream, by the time a
-decision is made the streams are able to be connected together to avoid all
-local caches.
+More examples can be found: https://pkg.go.dev/github.com/pschou/go-flowfile#pkg-examples
+
+Early logic is key!  When an incoming FlowFile is presented to the program,
+what is presented is the attributes, often seen in the first packet in the
+stream, so... by the time a decision on what to do with the FlowFile, the
+destination and incoming streams can be connected together to avoid all local
+caches and enable "fast-forwarding" of packets.
 
 The complexity of the decision logic can be as complex or as simple as one
 desires, consume on one or more ports / listening paths, and send to as

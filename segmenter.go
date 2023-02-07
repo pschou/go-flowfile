@@ -52,12 +52,6 @@ func SegmentBySize(in *File, segmentSize int64) (out []*File, err error) {
 		parentAttrs[i].Value = attrs[i].Value
 	}
 
-	if in.openCount == nil {
-		in.openCount = &count
-	} else {
-		*in.openCount = *in.openCount + count - 1
-	}
-
 	st, en := int64(0), in.i+segmentSize
 	for i := 0; i < count; i++ {
 		st, en = en, en+segmentSize
@@ -66,12 +60,11 @@ func SegmentBySize(in *File, segmentSize int64) (out []*File, err error) {
 		}
 
 		f := &File{
-			ra:        in.ra,
-			i:         st,
-			Size:      en - st,
-			n:         en - st,
-			Attrs:     Attributes(parentAttrs).Clone(),
-			openCount: in.openCount,
+			ra:    in.ra,
+			i:     st,
+			Size:  en - st,
+			n:     en - st,
+			Attrs: Attributes(parentAttrs).Clone(),
 		}
 		f.Attrs.Set("segment-offset", fmt.Sprintf("%d", st))
 		f.Attrs.Set("segment-index", fmt.Sprintf("%d", i))

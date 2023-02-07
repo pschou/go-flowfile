@@ -77,14 +77,26 @@ type File struct {
 
 	cksumStatus int8
 	cksum       hash.Hash
-	openCount   *int
 }
 
 // Create a new File struct from an io.Reader with size.  One should add
 // attributes before writing it to a stream.
+//
+// Note: A calling method should do the due diligence of closing the inner
+// reader after the flowfile is done being used.  A good way to do this is
+// something like:
+//
+//   fh, err := os.Open(filename)
+//   if err != nil {
+//     log.Fatal(err)
+//   }
+//   defer fh.Close()
+//   f := flowfile.New(fh, fileInfo.Size())  // Construct a flowfile with size
+//   f.Attrs.Set("path", dn)      // Specify the path for the file
+//   f.Attrs.Set("filename", fn)  // Give the filename
+//   f.Attrs.GenerateUUID()       // Set a unique identifier to this file
 func New(r io.Reader, size int64) *File {
-	ct := 1
-	f := &File{n: size, Size: size, openCount: &ct}
+	f := &File{n: size, Size: size}
 	if rs, ok := r.(io.ReadSeeker); ok {
 		f.i, _ = rs.Seek(0, io.SeekCurrent)
 	}
@@ -130,32 +142,23 @@ func (l *File) Read(p []byte) (n int, err error) {
 	return
 }
 
-// Close the flowfile.  Generally the FlowFile is acted upon in a streaming
-// context, moving a file from one place to another.  So, in this
-// understanding, the action of closing a file is effectively removing it from
-// consideration and going to the next file.
+// Close the flowfile contruct.  Generally the FlowFile is acted upon in a
+// streaming context, moving a file from one place to another.  So, in this
+// understanding, the action of closing a flowfile is effectively removing the
+// current payload from consideration and moving the reader pointer forward,
+// making the next flowfile available for reading.
 func (l *File) Close() (err error) {
 	switch {
 	case l.ra != nil:
-		if rc, ok := l.ra.(io.Closer); ok && l.openCount != nil {
-			if *l.openCount == 1 {
-				rc.Close()
-			}
-			*l.openCount = *l.openCount - 1
-		}
-		// else if rs, ok := l.ra.(io.ReadSeeker); ok {
-		// Seek the pointer to the next reading position
-		//	rs.Seek(l.n, io.SeekCurrent)
-		// }
-
 	case l.r != nil:
-		_, err = io.CopyN(ioutil.Discard, l.r, l.n)
-		if rc, ok := l.r.(io.Closer); ok && l.openCount != nil {
-			if *l.openCount == 1 {
-				rc.Close()
-			}
-			*l.openCount = *l.openCount - 1
+		if rs, ok := l.ra.(io.ReadSeeker); ok {
+			// Seek the pointer to the next reading position
+			rs.Seek(l.n, io.SeekCurrent)
+		} else {
+			_, err = io.CopyN(ioutil.Discard, l.r, l.n)
 		}
+	default:
+		return fmt.Errorf("Missing underlying reader")
 	}
 	// Adjust the counters
 	l.n, l.i = 0, l.i+l.n
