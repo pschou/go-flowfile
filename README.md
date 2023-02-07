@@ -2,10 +2,10 @@
 
 flowfile is a GoLang module providing a set of tools to interact with NiFi
 FlowFiles at a low level.  It's been finely tuned to handle the streaming
-context best as memory and disk often have limitations.
+context best, as memory and disk often have limitations.
 
 This module was built to be both simple to use and operate at a low level (at
-the bytes) to work with FlowFiles at wire speed.  Here is an example of a how a basic
+the bytes) to work with FlowFiles at wire speed.  Here is an example of how a basic
 filtering and forwarding method would be written:
 
 ```golang
@@ -55,13 +55,13 @@ func main() {
 More examples can be found: https://pkg.go.dev/github.com/pschou/go-flowfile#pkg-examples
 
 Early logic is key!  When an incoming FlowFile is presented to the program,
-what is presented is the attributes, often seen in the first packet in the
-stream, so... by the time a decision on what to do with the FlowFile, the
-destination and incoming streams can be connected together to avoid all local
-caches and enable "fast-forwarding" of packets.
+what is presented are the attributes often seen in the first packet in the
+stream, so by the time a decision is made on what to do with the FlowFile,
+the destination and incoming streams can be connected together to avoid all
+local caches and enable "fast-forwarding" of the original packets.
 
 The complexity of the decision logic can be as complex or as simple as one
-desires, consume on one or more ports / listening paths, and send to as
-many upstream servers as desired with concurrency.
+desires.  One can consume on one or more ports/listening paths and send to as
+many downstream servers as desired with concurrency.
 
-For more documentation go to https://pkg.go.dev/github.com/pschou/go-flowfile .
+For more documentation, go to https://pkg.go.dev/github.com/pschou/go-flowfile .
