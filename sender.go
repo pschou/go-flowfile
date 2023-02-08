@@ -60,7 +60,7 @@ func (hs *HTTPTransaction) Handshake() error {
 	}
 
 	txid := uuid.New().String()
-	req.Header.Set("x-nifi-transaction-id", txid)
+	req.Header.Set("Connection", "Keep-alive")
 	req.Header.Set("User-Agent", UserAgent)
 	res, err := hs.client.Do(req)
 	if err != nil {
@@ -278,6 +278,7 @@ func doPost(hs *HTTPTransaction, httpWriter *HTTPPostWriter, r io.ReadCloser) {
 	req.Header.Set("x-nifi-transfer-protocol-version", "3")
 	req.Header.Set("x-nifi-transaction-id", hs.TransactionID)
 	req.Header.Set("Transfer-Encoding", "chunked")
+	req.Header.Set("Connection", "Keep-alive")
 	req.Header.Set("User-Agent", UserAgent)
 	//if Debug {
 	//	log.Println("doing request", req)
