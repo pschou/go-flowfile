@@ -28,7 +28,7 @@ func (f *File) Save(baseDir string) (outputFile string, err error) {
 		}
 	}
 
-	filename := f.Attrs.Get("filename")
+	_, filename := path.Split(f.Attrs.Get("filename"))
 	outputFile = path.Join(dir, filename)
 	var fh *os.File
 
