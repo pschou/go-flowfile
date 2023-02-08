@@ -41,7 +41,7 @@ func main() {
 
   var counter int
   myDecimator := flowfile.NewHTTPReceiver(func(s *flowfile.Scanner, r *http.Request) error {
-    pw := txn.NewHTTPPostWriter()  // Create a new POST downstream
+    pw := txn.NewHTTPBufferedPostWriter()  // Create a new POST downstream
     defer pw.Close()               // Close the POST at function return
 
     for s.Scan() {                 // Read the next file off the stream
