@@ -52,7 +52,7 @@ func SegmentBySize(in *File, segmentSize int64) (out []*File, err error) {
 		parentAttrs[i].Value = attrs[i].Value
 	}
 
-	st, en := int64(0), in.i+segmentSize
+	st, en := int64(0), in.i
 	for i := 0; i < count; i++ {
 		st, en = en, en+segmentSize
 		if en > size {
