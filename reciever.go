@@ -63,7 +63,7 @@ func (f HTTPReceiver) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case "HEAD":
 		// Handle the head request method
-		hdr.Set("Accept", "application/flowfile-v3,*/*;q=0.8")
+		hdr.Set("Accept", "application/flowfile-v3")
 		if f.MaxPartitionSize > 0 {
 			hdr.Set("max-partition-size", fmt.Sprintf("%d", f.MaxPartitionSize))
 		}

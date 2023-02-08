@@ -60,6 +60,7 @@ func (hs *HTTPTransaction) Handshake() error {
 	}
 
 	txid := uuid.New().String()
+	req.Header.Set("x-nifi-transaction-id", txid)
 	req.Header.Set("Connection", "Keep-alive")
 	req.Header.Set("User-Agent", UserAgent)
 	res, err := hs.client.Do(req)
@@ -67,7 +68,15 @@ func (hs *HTTPTransaction) Handshake() error {
 		return err
 	}
 
-	if res.StatusCode != 200 {
+	if Debug {
+		log.Printf("Result on query: %#v\n", res)
+	}
+
+	switch res.StatusCode {
+	case 200: // Success
+	case 405:
+		return fmt.Errorf("Method not allowed, make sure the remote server accepts flowfile-v3")
+	default:
 		return fmt.Errorf("Unexpected status code %d", res.StatusCode)
 	}
 
@@ -189,7 +198,7 @@ func (hw *HTTPPostWriter) Write(f *File) (n int64, err error) {
 		err = hw.clientErr
 		return
 	}
-	if f.Size > 0 && f.Attrs.Get("checksum-type") == "" {
+	if f.Size > 0 && f.Attrs.Get("checksumType") == "" {
 		f.AddChecksum(hw.hs.CheckSumType)
 	}
 	n, err = writeTo(hw.w, f)

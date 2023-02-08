@@ -33,10 +33,10 @@ func SegmentBySize(in *File, segmentSize int64) (out []*File, err error) {
 	count := int((size-1)/segmentSize + 1)
 
 	// Make sure parent attributes are set
-	puuid := in.Attrs.Get("uuid")
-	if puuid == "" {
-		puuid = in.Attrs.GenerateUUID()
+	if uuid := in.Attrs.Get("uuid"); uuid == "" {
+		in.Attrs.GenerateUUID()
 	}
+
 	in.Attrs.Set("size", fmt.Sprintf("%d", size))
 
 	// Create labeling for the child segment
@@ -44,10 +44,10 @@ func SegmentBySize(in *File, segmentSize int64) (out []*File, err error) {
 	parentAttrs := make([]Attribute, len(attrs))
 	for i := range attrs {
 		switch attrs[i].Name {
-		case "filename", "path":
-			parentAttrs[i].Name = attrs[i].Name
+		case "uuid":
+			parentAttrs[i].Name = "fragment.identifier"
 		default:
-			parentAttrs[i].Name = "parent-" + attrs[i].Name
+			parentAttrs[i].Name = "segment.original." + attrs[i].Name
 		}
 		parentAttrs[i].Value = attrs[i].Value
 	}
@@ -66,9 +66,10 @@ func SegmentBySize(in *File, segmentSize int64) (out []*File, err error) {
 			n:     en - st,
 			Attrs: Attributes(parentAttrs).Clone(),
 		}
-		f.Attrs.Set("segment-offset", fmt.Sprintf("%d", st))
-		f.Attrs.Set("segment-index", fmt.Sprintf("%d", i))
-		f.Attrs.Set("segment-count", fmt.Sprintf("%d", count))
+		f.Attrs.Set("merge.reason", "MAX_BYTES_THRESHOLD_REACHED")
+		f.Attrs.Set("fragment.offset", fmt.Sprintf("%d", st))
+		f.Attrs.Set("fragment.index", fmt.Sprintf("%d", i+1))
+		f.Attrs.Set("fragment.count", fmt.Sprintf("%d", count))
 		f.Attrs.GenerateUUID()
 		out = append(out, f)
 	}

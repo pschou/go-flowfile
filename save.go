@@ -32,7 +32,7 @@ func (f *File) Save(baseDir string) (outputFile string, err error) {
 	outputFile = path.Join(dir, filename)
 	var fh *os.File
 
-	if sz := f.Attrs.Get("parent-size"); sz == "" {
+	if sz := f.Attrs.Get("segment.original.size"); sz == "" {
 		// Open a file for whole writeout, write the file, then checksum
 		if fh, err = os.Create(outputFile); err != nil {
 			return
@@ -51,7 +51,7 @@ func (f *File) Save(baseDir string) (outputFile string, err error) {
 		if parentSize, err = strconv.ParseUint(sz, 10, 64); err != nil {
 			return
 		}
-		if offset, err = strconv.ParseUint(f.Attrs.Get("segment-offset"), 10, 64); err != nil {
+		if offset, err = strconv.ParseUint(f.Attrs.Get("fragment.offset"), 10, 64); err != nil {
 			return
 		}
 		// Make sure the target file is in place and has the right size:
