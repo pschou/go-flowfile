@@ -195,6 +195,6 @@ func (l *File) Close() (err error) {
 }
 
 // Encode and write the FlowFile to an io.Writer
-func (l *File) WriteFile(w io.Writer) error {
+func (l *File) WriteFile(w io.Writer) (int64, error) {
 	return writeTo(w, l)
 }

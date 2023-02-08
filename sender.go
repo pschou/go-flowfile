@@ -112,13 +112,8 @@ func (hs *HTTPTransaction) Handshake() error {
 	return nil
 }
 
-type SendConfig struct {
-	header        http.Header
-	FlushInterval time.Duration
-}
-
-// Get a header value which is configured to be sent
-func (c *SendConfig) GetHeader(key string) (value string) {
+/*// Get a header value which is configured to be sent
+func (c *HTTPPostWriter) GetHeader(key string) (value string) {
 	if c.header == nil {
 		c.header = make(http.Header)
 	}
@@ -126,17 +121,21 @@ func (c *SendConfig) GetHeader(key string) (value string) {
 }
 
 // Set a header value which is configured to be sent
-func (c *SendConfig) SetHeader(key, value string) {
+func (c *HTTPPostWriter) SetHeader(key, value string) {
 	if c.header == nil {
 		c.header = make(http.Header)
 	}
 	c.header.Set(key, value)
-}
+}*/
 
 // Send a flow file to the remote server and return any errors back.
 // A nil return for error is a successful send.
-func (hs *HTTPTransaction) Send(f *File, cfg *SendConfig) (err error) {
-	httpWriter := hs.NewHTTPPostWriter(cfg)
+//
+// This method of sending will make one post per file, to increase throughput
+// on smaller files one should consider using either NewHTTPPostWriter or
+// NewHTTPBufferedPostWriter.
+func (hs *HTTPTransaction) Send(f *File) (err error) {
+	httpWriter := hs.NewHTTPPostWriter()
 	defer func() {
 		httpWriter.Close()
 		if httpWriter.Response == nil {
@@ -145,7 +144,7 @@ func (hs *HTTPTransaction) Send(f *File, cfg *SendConfig) (err error) {
 			err = fmt.Errorf("File did not send successfully, code %d", httpWriter.Response.StatusCode)
 		}
 	}()
-	err = httpWriter.Write(f)
+	_, err = httpWriter.Write(f)
 	return
 }
 
@@ -171,32 +170,48 @@ func (hs *HTTPTransaction) Close() (err error) {
 //     log.Fatal(err)
 //   }
 //
-//   cfg := &flowfile.SendConfig{}  // Set the sent HTTP Headers with this
-//   w := ht.NewHTTPPostWriter(cfg) // Create the POST to the NiFi endpoint
+//   w := ht.NewHTTPPostWriter() // Create the POST to the NiFi endpoint
 //   w.Write(ff1)
 //   w.Write(ff2)
 //   err = w.Close() // Finalize the POST
 type HTTPPostWriter struct {
-	hs        *HTTPTransaction
-	w         io.WriteCloser
-	err       error
-	clientErr error
-	Response  *http.Response
-	replyLock sync.Mutex
+	Header               http.Header
+	FlushInterval        time.Duration
+	Sent                 int64
+	hs                   *HTTPTransaction
+	w                    io.WriteCloser
+	err                  error
+	clientErr            error
+	Response             *http.Response
+	writeLock, replyLock sync.Mutex
+	init                 func()
 }
 
 // Write a flow file to the remote server and return any errors back.  One
 // cannot determine if there has been a successful send until the HTTPPostWriter is
 // closed.  Then the Response.StatusCode will be set with the reply from the
 // server.
-func (hw *HTTPPostWriter) Write(f *File) error {
+func (hw *HTTPPostWriter) Write(f *File) (n int64, err error) {
+	// Make sure only one is being written to the stream at once
+	hw.writeLock.Lock()
+	defer hw.writeLock.Unlock()
+
+	// On first write, initaite the POST
+	if hw.init != nil {
+		hw.replyLock.Lock()
+		hw.init()
+		hw.init = nil
+	}
 	if hw.clientErr != nil {
-		return hw.clientErr
+		err = hw.clientErr
+		return
 	}
 	if f.Size > 0 && f.Attrs.Get("checksum-type") == "" {
 		f.AddChecksum(hw.hs.CheckSumType)
 	}
-	return writeTo(hw.w, f)
+	n, err = writeTo(hw.w, f)
+	hw.Sent += n
+	return
 }
 
 // Close the HTTPPostWriter and flush the data to the stream
@@ -214,11 +229,16 @@ func (hw *HTTPPostWriter) Close() (err error) {
 //
 // However, HTTPPostWriter increases the chances of failures as all the sent
 // files will be marked as failed if the the HTTP POST is not a success.
-func (hs *HTTPTransaction) NewHTTPPostWriter(cfg *SendConfig) (httpWriter *HTTPPostWriter) {
+func (hs *HTTPTransaction) NewHTTPPostWriter() (httpWriter *HTTPPostWriter) {
 	r, w := io.Pipe()
-	httpWriter = &HTTPPostWriter{w: w, hs: hs}
-	httpWriter.replyLock.Lock()
-	go doPost(hs, httpWriter, r, cfg)
+	httpWriter = &HTTPPostWriter{
+		Header: make(http.Header),
+		w:      w,
+		hs:     hs,
+		init: func() {
+			go doPost(hs, httpWriter, r)
+		},
+	}
 	return
 }
 
@@ -230,26 +250,29 @@ func (hs *HTTPTransaction) NewHTTPPostWriter(cfg *SendConfig) (httpWriter *HTTPP
 //
 // However, HTTPPostWriter increases the chances of failures as all the sent
 // files will be marked as failed if the the HTTP POST is not a success.
-func (hs *HTTPTransaction) NewHTTPBufferedPostWriter(cfg *SendConfig) (httpWriter *HTTPPostWriter) {
+func (hs *HTTPTransaction) NewHTTPBufferedPostWriter() (httpWriter *HTTPPostWriter) {
 	r, w := io.Pipe()
-	if cfg.FlushInterval == 0 {
-		cfg.FlushInterval = 400 * time.Millisecond
-	}
 	mlw := &maxLatencyWriter{
-		dst:     bufio.NewWriter(w),
-		c:       w,
-		latency: cfg.FlushInterval,
-		done:    make(chan bool),
+		dst:  bufio.NewWriter(w),
+		c:    w,
+		done: make(chan bool),
 	}
-	go mlw.flushLoop()
 
-	httpWriter = &HTTPPostWriter{w: mlw, hs: hs}
-	httpWriter.replyLock.Lock()
-	go doPost(hs, httpWriter, r, cfg)
+	httpWriter = &HTTPPostWriter{
+		Header:        make(http.Header),
+		w:             mlw,
+		hs:            hs,
+		FlushInterval: 400 * time.Millisecond,
+	}
+	httpWriter.init = func() {
+		mlw.latency = httpWriter.FlushInterval
+		go mlw.flushLoop()
+		go doPost(hs, httpWriter, r)
+	}
 	return
 }
 
-func doPost(hs *HTTPTransaction, httpWriter *HTTPPostWriter, r io.ReadCloser, cfg *SendConfig) {
+func doPost(hs *HTTPTransaction, httpWriter *HTTPPostWriter, r io.ReadCloser) {
 	hs.wait.RLock()
 	defer hs.wait.RUnlock()
 
@@ -260,8 +283,8 @@ func doPost(hs *HTTPTransaction, httpWriter *HTTPPostWriter, r io.ReadCloser, cf
 	defer httpWriter.replyLock.Unlock()
 	defer r.Close() // Make sure pipe is terminated
 	// Set custom http headers
-	if cfg != nil && cfg.header != nil {
-		for k, v := range cfg.header {
+	if httpWriter.Header != nil {
+		for k, v := range httpWriter.Header {
 			if len(v) > 0 {
 				req.Header.Set(k, v[0])
 			}
@@ -273,6 +296,9 @@ func doPost(hs *HTTPTransaction, httpWriter *HTTPPostWriter, r io.ReadCloser, cf
 	req.Header.Set("x-nifi-transaction-id", hs.TransactionID)
 	req.Header.Set("Transfer-Encoding", "chunked")
 	req.Header.Set("User-Agent", UserAgent)
+	//if Debug {
+	//	log.Println("doing request", req)
+	//}
 	httpWriter.Response, httpWriter.clientErr = hs.client.Do(req)
 	if Debug {
 		log.Println("set reponse", httpWriter.Response, httpWriter.clientErr)

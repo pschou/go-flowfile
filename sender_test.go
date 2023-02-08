@@ -18,7 +18,7 @@ func ExampleNewHTTPTransaction_Forwarding() {
 	myDecimator := flowfile.NewHTTPFileReceiver(func(f *flowfile.File, r *http.Request) error {
 		counter++
 		if counter%10 == 1 {
-			return txn.Send(f, nil) // Forward only 1 of every 10 Files
+			return txn.Send(f) // Forward only 1 of every 10 Files
 		}
 		return nil // Drop the rest
 	})
@@ -38,7 +38,7 @@ func ExampleNewHTTPTransaction() {
 	var ff flowfile.File
 	err = flowfile.Unmarshal(dat, &ff)
 
-	err = hs.Send(&ff, nil)
+	err = hs.Send(&ff)
 }
 
 func ExampleSendConfig() {
@@ -52,9 +52,11 @@ func ExampleSendConfig() {
 	var ff flowfile.File
 	err = flowfile.Unmarshal(dat, &ff)
 
-	sendConfig := new(flowfile.SendConfig)
-	sendConfig.SetHeader("X-Forwarded-For", "1.2.3.4:5678")
-	err = hs.Send(&ff, sendConfig)
+	hp := hs.NewHTTPPostWriter()
+	defer hp.Close()
+
+	hp.Header.Set("X-Forwarded-For", "1.2.3.4:5678")
+	_, err = hp.Write(&ff)
 }
 
 func ExampleNewHTTPFileReceiver() {
@@ -103,8 +105,7 @@ func ExampleHTTPPostWriter() {
 		log.Fatal(err)
 	}
 
-	cfg := &flowfile.SendConfig{}  // Set the sent HTTP Headers with this
-	w := ht.NewHTTPPostWriter(cfg) // Create the POST to the NiFi endpoint
+	w := ht.NewHTTPPostWriter() // Create the POST to the NiFi endpoint
 	w.Write(ff1)
 	w.Write(ff2)
 	err = w.Close() // Finalize the POST

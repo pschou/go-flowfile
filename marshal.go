@@ -9,7 +9,7 @@ import (
 )
 
 // Encode a flowfile into an io.Writer
-func writeTo(out io.Writer, f *File) (err error) {
+func writeTo(out io.Writer, f *File) (n int64, err error) {
 	header := bytes.NewBuffer([]byte{})
 	if err = f.Attrs.WriteTo(header); err != nil {
 		if Debug {
@@ -25,7 +25,7 @@ func writeTo(out io.Writer, f *File) (err error) {
 		return
 	}
 
-	_, err = io.Copy(out, io.MultiReader(header, f))
+	n, err = io.Copy(out, io.MultiReader(header, f))
 	if Debug && err != nil {
 		log.Println("Failed to send contents", err)
 	}
@@ -38,7 +38,7 @@ func writeTo(out io.Writer, f *File) (err error) {
 // Note: This is not preferred as it can cause memory bloat.
 func Marshal(f File) (dat []byte, err error) {
 	buf := bytes.NewBuffer(dat)
-	err = f.WriteFile(buf)
+	_, err = f.WriteFile(buf)
 	dat = buf.Bytes()
 	return
 }
