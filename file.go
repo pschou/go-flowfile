@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// This module was built to be a light weight connection handling tool for
+// Go-flowfile is a light weight connection handling tool for
 // sending and receiving FlowFiles via an HTTP/HTTPS exchange.  When the HTTPS
 // method is used, the client MUST also present a valid client certificate.
 //
