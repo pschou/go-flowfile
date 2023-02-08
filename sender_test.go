@@ -15,10 +15,23 @@ func ExampleNewHTTPTransaction_Forwarding() {
 	}
 
 	var counter int
-	myDecimator := flowfile.NewHTTPFileReceiver(func(f *flowfile.File, r *http.Request) error {
-		counter++
-		if counter%10 == 1 {
-			return txn.Send(f) // Forward only 1 of every 10 Files
+	myDecimator := flowfile.NewHTTPReceiver(func(s *flowfile.Scanner, r *http.Request) error {
+		pw := txn.NewHTTPPostWriter()
+		defer pw.Close()
+
+		for s.Scan() {
+			f, err := s.File()
+			if err != nil {
+				return err
+			}
+
+			counter++
+			if counter%10 == 1 {
+				_, err = pw.Write(f) // Forward only 1 of every 10 Files
+				if err != nil {
+					return err
+				}
+			}
 		}
 		return nil // Drop the rest
 	})

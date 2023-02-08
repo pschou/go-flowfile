@@ -28,8 +28,9 @@ func main() {
 }
 ```
 
-Another program example of building a NiFi routing program, this time it only
-forwards 1 of every 10 Files:
+Another slightly more complex program example of building a NiFi routing
+program, this time it forwards 1 of every 10 FlowFiles while keeping the
+bundles together in one POST:
 
 ```golang
 func main() {
@@ -39,16 +40,29 @@ func main() {
   }
 
   var counter int
-  myDecimator:= flowfile.NewHTTPFileReceiver(func(f *flowfile.File, r *http.Request) error {
-    counter++
-    if counter % 10 == 1 {
-      return txn.Send(f)  // Forward only 1 of every 10 Files
+  myDecimator := flowfile.NewHTTPReceiver(func(s *flowfile.Scanner, r *http.Request) error {
+    pw := txn.NewHTTPPostWriter()  // Create a new POST downstream
+    defer pw.Close()               // Close the POST at function return
+
+    for s.Scan() {                 // Read the next file off the stream
+      f, err := s.File()
+      if err != nil {
+        return err
+      }
+
+      counter++
+      if counter%10 == 1 {
+        _, err = pw.Write(f)       // Forward only 1 of every 10 Files
+        if err != nil {
+          return err
+        }
+      }
     }
-    return nil            // Drop the rest
+    return nil // Drop the rest
   })
 
-  http.Handle("/contentDecimator", myDecimator)  // Add the listener to a path
-  http.ListenAndServe(":8080", nil)              // Start accepting connections
+  http.Handle("/contentDecimator", myDecimator) // Add the listener to a path
+  http.ListenAndServe(":8080", nil)             // Start accepting connections
 }
 ```
 
