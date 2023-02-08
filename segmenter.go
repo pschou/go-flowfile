@@ -42,7 +42,13 @@ func SegmentBySize(in *File, segmentSize int64) (out []*File, err error) {
 	baseAttrs.Unset("uuid")
 
 	baseAttrs.Set("segment.original.size", fmt.Sprintf("%d", size))
-	baseAttrs.Set("segment.original.filename", baseAttrs.Get("filename"))
+	baseAttrs.Set("segment.original.filename", in.Attrs.Get("filename"))
+	if ct := in.Attrs.Get("checksumType"); ct != "" {
+		baseAttrs.Set("segment.original.checksumType", ct)
+		baseAttrs.Set("segment.original.checksum", in.Attrs.Get("checksum"))
+		baseAttrs.Unset("checksumType")
+		baseAttrs.Unset("checksum")
+	}
 
 	st, en := int64(0), in.i
 	for i := 0; i < count; i++ {
