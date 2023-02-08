@@ -17,14 +17,13 @@ import (
 // The HTTP Sender will establish a NiFi handshake and ensure that the remote
 // endpoint is listening and compatible with the current flow file format.
 type HTTPTransaction struct {
-	BytesSeen     uint64
 	url           string
 	client        *http.Client
 	Server        string
 	TransactionID string
 
 	// Non-standard NiFi entities supported by this library
-	MaxPartitionSize int    // Maximum partition size for partitioned file
+	MaxPartitionSize int64  // Maximum partition size for partitioned file
 	CheckSumType     string // What kind of CheckSum to use for sent files
 
 	hold *bool
@@ -98,9 +97,9 @@ func (hs *HTTPTransaction) Handshake() error {
 
 	// Parse out non-standard fields
 	if v := res.Header.Get("Max-Partition-Size"); v != "" {
-		maxPartitionSize, err := strconv.Atoi(v)
+		maxPartitionSize, err := strconv.ParseUint(v, 10, 64)
 		if err == nil {
-			hs.MaxPartitionSize = maxPartitionSize
+			hs.MaxPartitionSize = int64(maxPartitionSize)
 		} else {
 			if Debug {
 				log.Println("Unable to parse Max-Partition-Size", err)
@@ -112,28 +111,12 @@ func (hs *HTTPTransaction) Handshake() error {
 	return nil
 }
 
-/*// Get a header value which is configured to be sent
-func (c *HTTPPostWriter) GetHeader(key string) (value string) {
-	if c.header == nil {
-		c.header = make(http.Header)
-	}
-	return c.header.Get(key)
-}
-
-// Set a header value which is configured to be sent
-func (c *HTTPPostWriter) SetHeader(key, value string) {
-	if c.header == nil {
-		c.header = make(http.Header)
-	}
-	c.header.Set(key, value)
-}*/
-
 // Send a flow file to the remote server and return any errors back.
 // A nil return for error is a successful send.
 //
-// This method of sending will make one post per file, to increase throughput
-// on smaller files one should consider using either NewHTTPPostWriter or
-// NewHTTPBufferedPostWriter.
+// This method of sending will make one POST-per-file which is not recommended
+// for small files.  To increase throughput on smaller files one should
+// consider using either NewHTTPPostWriter or NewHTTPBufferedPostWriter.
 func (hs *HTTPTransaction) Send(f *File) (err error) {
 	httpWriter := hs.NewHTTPPostWriter()
 	defer func() {

@@ -14,7 +14,7 @@ import (
 //   https://pkg.go.dev/net/http#Handler
 type HTTPReceiver struct {
 	Server           string
-	MaxPartitionSize int
+	MaxPartitionSize int64
 
 	handler func(*Scanner, *http.Request) error
 	//BytesSeen        uint64
