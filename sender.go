@@ -183,6 +183,7 @@ func (hs *HTTPTransaction) Send(f *File) (err error) {
 	return
 }
 
+/*
 // Set a header value which is configured to be sent
 func (hs *HTTPTransaction) Close() (err error) {
 	hs.wait.Lock()
@@ -191,6 +192,7 @@ func (hs *HTTPTransaction) Close() (err error) {
 	hs.TransactionID, hs.Server = "", ""
 	return
 }
+*/
 
 // Writer ecapsulates the ability to write one or more flow files in one POST
 // request.  This must be closed upon completion of the last File sent.
@@ -336,8 +338,12 @@ func (hs *HTTPTransaction) NewHTTPBufferedPostWriter() (httpWriter *HTTPPostWrit
 }
 
 func doPost(hs *HTTPTransaction, httpWriter *HTTPPostWriter, r io.ReadCloser) {
+	err := fmt.Errorf("POST did not complete")
 	hs.wait.RLock()
-	defer hs.wait.RUnlock()
+	defer func() {
+		httpWriter.clientErr <- err
+		hs.wait.RUnlock()
+	}()
 
 	req, _ := http.NewRequest("POST", hs.url, r)
 	// We shouldn't get an error here as the session would have already
@@ -363,10 +369,8 @@ func doPost(hs *HTTPTransaction, httpWriter *HTTPPostWriter, r io.ReadCloser) {
 	//if Debug {
 	//	log.Println("doing request", req)
 	//}
-	var err error
 	httpWriter.Response, err = httpWriter.client.Do(req)
 	if Debug {
 		log.Println("set reponse", httpWriter.Response, httpWriter.clientErr)
 	}
-	httpWriter.clientErr <- err
 }
