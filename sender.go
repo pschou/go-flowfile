@@ -35,7 +35,7 @@ type HTTPTransaction struct {
 
 	hold *bool
 	//waitGroup sizedwaitgroup.SizedWaitGroup
-	wait sync.RWMutex
+	//wait sync.RWMutex
 }
 
 // Create the HTTP sender and verify that the remote side is listening.
@@ -84,8 +84,8 @@ func NewHTTPTransaction(url string, cfg *tls.Config) (*HTTPTransaction, error) {
 // process of transferring flowfiles.  This is a blocking call so no new files
 // will be sent until this is completed.
 func (hs *HTTPTransaction) Handshake() error {
-	hs.wait.Lock()
-	defer hs.wait.Unlock()
+	//hs.wait.Lock()
+	//defer hs.wait.Unlock()
 
 	client := hs.clientPool.Get().(*http.Client)
 	defer hs.clientPool.Put(client)
@@ -224,8 +224,8 @@ type HTTPPostWriter struct {
 
 	Response *http.Response
 
-	writeLock, replyLock sync.Mutex
-	init                 func()
+	writeLock sync.Mutex
+	init      func()
 }
 
 // Write a flow file to the remote server and return any errors back.  One
@@ -250,7 +250,7 @@ func (hw *HTTPPostWriter) Write(f *File) (n int64, err error) {
 
 	// On first write, initaite the POST
 	if hw.init != nil {
-		hw.replyLock.Lock()
+		//hw.replyLock.Lock()
 		hw.init()
 		hw.init = nil
 	}
@@ -329,6 +329,7 @@ func (hs *HTTPTransaction) NewHTTPBufferedPostWriter() (httpWriter *HTTPPostWrit
 		FlushInterval: 400 * time.Millisecond,
 		client:        client,
 	}
+
 	httpWriter.init = func() {
 		mlw.latency = httpWriter.FlushInterval
 		go mlw.flushLoop()
@@ -339,18 +340,15 @@ func (hs *HTTPTransaction) NewHTTPBufferedPostWriter() (httpWriter *HTTPPostWrit
 
 func doPost(hs *HTTPTransaction, httpWriter *HTTPPostWriter, r io.ReadCloser) {
 	err := fmt.Errorf("POST did not complete")
-	hs.wait.RLock()
 	defer func() {
+		r.Close() // Make sure pipe is terminated
 		httpWriter.clientErr <- err
-		hs.wait.RUnlock()
 	}()
 
 	req, _ := http.NewRequest("POST", hs.url, r)
 	// We shouldn't get an error here as the session would have already
 	// established the connection details.
 
-	defer httpWriter.replyLock.Unlock()
-	defer r.Close() // Make sure pipe is terminated
 	// Set custom http headers
 	if httpWriter.Header != nil {
 		for k, v := range httpWriter.Header {
@@ -366,11 +364,11 @@ func doPost(hs *HTTPTransaction, httpWriter *HTTPPostWriter, r io.ReadCloser) {
 	req.Header.Set("Transfer-Encoding", "chunked")
 	req.Header.Set("Connection", "Keep-alive")
 	req.Header.Set("User-Agent", UserAgent)
-	//if Debug {
-	//	log.Println("doing request", req)
-	//}
+	if Debug {
+		log.Println("doing request", req)
+	}
 	httpWriter.Response, err = httpWriter.client.Do(req)
 	if Debug {
-		log.Println("set reponse", httpWriter.Response, httpWriter.clientErr)
+		log.Println("set reponse", httpWriter.Response, err)
 	}
 }
