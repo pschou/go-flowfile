@@ -298,10 +298,11 @@ func (hs *HTTPTransaction) NewHTTPPostWriter() (httpWriter *HTTPPostWriter) {
 
 	r, w := io.Pipe()
 	httpWriter = &HTTPPostWriter{
-		Header: make(http.Header),
-		w:      w,
-		hs:     hs,
-		client: client,
+		Header:    make(http.Header),
+		w:         w,
+		hs:        hs,
+		client:    client,
+		clientErr: make(chan error),
 	}
 	httpWriter.init = func() {
 		go httpWriter.doPost(hs, r)
@@ -333,6 +334,7 @@ func (hs *HTTPTransaction) NewHTTPBufferedPostWriter() (httpWriter *HTTPPostWrit
 		hs:            hs,
 		FlushInterval: 400 * time.Millisecond,
 		client:        client,
+		clientErr:     make(chan error),
 	}
 
 	httpWriter.init = func() {
