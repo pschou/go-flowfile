@@ -40,7 +40,10 @@ type HTTPTransaction struct {
 
 // Create the HTTP sender and verify that the remote side is listening.
 func NewHTTPTransaction(url string, cfg *tls.Config) (*HTTPTransaction, error) {
-	tlsConfig := cfg.Clone() // Create a copy for immutability
+	var tlsConfig *tlsConfig
+	if tlsConfig != nil {
+		tlsConfig = cfg.Clone() // Create a copy for immutability
+	}
 
 	hs := &HTTPTransaction{
 		url:          url,
@@ -50,6 +53,7 @@ func NewHTTPTransaction(url string, cfg *tls.Config) (*HTTPTransaction, error) {
 	hs.clientPool = sync.Pool{
 		New: func() any {
 			return &http.Client{
+				Timeout: 30 * time.Second,
 				Transport: &http.Transport{
 					Proxy: http.ProxyFromEnvironment,
 					DialContext: (&net.Dialer{
@@ -61,7 +65,7 @@ func NewHTTPTransaction(url string, cfg *tls.Config) (*HTTPTransaction, error) {
 					IdleConnTimeout:       90 * time.Second,
 					TLSHandshakeTimeout:   10 * time.Second,
 					ExpectContinueTimeout: 1 * time.Second,
-					TLSClientConfig:       tlsConfig.Clone(),
+					TLSClientConfig:       tlsConfig,
 				},
 			}
 		}}
