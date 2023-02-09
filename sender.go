@@ -270,6 +270,10 @@ func (hs *HTTPTransaction) NewHTTPPostWriter() (httpWriter *HTTPPostWriter) {
 
 	client := hs.clientPool.Get().(*http.Client)
 
+	if Debug {
+		log.Printf("HTTP.Client: %#v\n", *client)
+	}
+
 	r, w := io.Pipe()
 	httpWriter = &HTTPPostWriter{
 		Header: make(http.Header),
