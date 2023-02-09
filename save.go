@@ -94,6 +94,7 @@ type zeros struct {
 	n uint64
 }
 
+// Zero implements the io.Reader interface to enable reading zeros
 func (z *zeros) Read(p []byte) (n int, err error) {
 	if uint64(len(p)) < uint64(z.n) {
 		z.n, n = z.n-uint64(len(p)), len(p)

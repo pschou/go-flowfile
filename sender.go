@@ -23,9 +23,6 @@ type HTTPTransaction struct {
 	Server        string
 	TransactionID string
 
-	// Create an upper bound for threading
-	MaxClients, clients int
-
 	tlsConfig  *tls.Config
 	clientPool sync.Pool
 
@@ -34,8 +31,6 @@ type HTTPTransaction struct {
 	CheckSumType     string // What kind of CheckSum to use for sent files
 
 	hold *bool
-	//waitGroup sizedwaitgroup.SizedWaitGroup
-	//wait sync.RWMutex
 }
 
 // Create the HTTP sender and verify that the remote side is listening.
@@ -52,9 +47,6 @@ func NewHTTPTransaction(url string, cfg *tls.Config) (*HTTPTransaction, error) {
 	}
 	hs.clientPool = sync.Pool{
 		New: func() any {
-			if Debug {
-				log.Println("Building client for pool")
-			}
 			return &http.Client{
 				Timeout: 30 * time.Second,
 				Transport: &http.Transport{
@@ -84,15 +76,13 @@ func NewHTTPTransaction(url string, cfg *tls.Config) (*HTTPTransaction, error) {
 // process of transferring flowfiles.  This is a blocking call so no new files
 // will be sent until this is completed.
 func (hs *HTTPTransaction) Handshake() error {
-	//hs.wait.Lock()
-	//defer hs.wait.Unlock()
 
 	client := hs.clientPool.Get().(*http.Client)
 	defer hs.clientPool.Put(client)
 
-	if Debug {
-		log.Printf("HTTP.Client: %#v\n", *client)
-	}
+	//if Debug {
+	//	log.Printf("HTTP.Client: %#v\n", *client)
+	//}
 
 	req, err := http.NewRequest("HEAD", hs.url, nil)
 	if err != nil {
@@ -183,17 +173,6 @@ func (hs *HTTPTransaction) Send(f *File) (err error) {
 	return
 }
 
-/*
-// Set a header value which is configured to be sent
-func (hs *HTTPTransaction) Close() (err error) {
-	hs.wait.Lock()
-	defer hs.wait.Unlock()
-
-	hs.TransactionID, hs.Server = "", ""
-	return
-}
-*/
-
 // Writer ecapsulates the ability to write one or more flow files in one POST
 // request.  This must be closed upon completion of the last File sent.
 //
@@ -267,14 +246,15 @@ func (hw *HTTPPostWriter) Close() (err error) {
 	hw.writeLock.Lock()
 	defer hw.writeLock.Unlock()
 	hw.w.Close()
+	hw.w = nil
 
 	if Debug {
 		log.Println("closed channel, waiting for post reply")
 	}
 	err = <-hw.clientErr
-	if Debug {
-		log.Println("repied!")
-	}
+	//if Debug {
+	//	log.Println("repied!")
+	//}
 
 	hw.hs.clientPool.Put(hw.client)
 	hw.client = nil
@@ -371,11 +351,11 @@ func (httpWriter *HTTPPostWriter) doPost(hs *HTTPTransaction, r io.ReadCloser) {
 	req.Header.Set("Transfer-Encoding", "chunked")
 	req.Header.Set("Connection", "Keep-alive")
 	req.Header.Set("User-Agent", UserAgent)
-	if Debug {
-		log.Println("doing request", req)
-	}
+	//if Debug {
+	//	log.Println("doing request", req)
+	//}
 	httpWriter.Response, err = httpWriter.client.Do(req)
 	if Debug {
-		log.Println("set reponse", httpWriter.Response, err)
+		log.Println("POST reponse:", httpWriter.Response, err)
 	}
 }
