@@ -301,10 +301,10 @@ func (hs *HTTPTransaction) NewHTTPPostWriter() (httpWriter *HTTPPostWriter) {
 		Header: make(http.Header),
 		w:      w,
 		hs:     hs,
-		init: func() {
-			go doPost(hs, httpWriter, r)
-		},
 		client: client,
+	}
+	httpWriter.init = func() {
+		go httpWriter.doPost(hs, r)
 	}
 	return
 }
@@ -338,12 +338,12 @@ func (hs *HTTPTransaction) NewHTTPBufferedPostWriter() (httpWriter *HTTPPostWrit
 	httpWriter.init = func() {
 		mlw.latency = httpWriter.FlushInterval
 		go mlw.flushLoop()
-		go doPost(hs, httpWriter, r)
+		go httpWriter.doPost(hs, r)
 	}
 	return
 }
 
-func doPost(hs *HTTPTransaction, httpWriter *HTTPPostWriter, r io.ReadCloser) {
+func (httpWriter *HTTPPostWriter) doPost(hs *HTTPTransaction, r io.ReadCloser) {
 	err := fmt.Errorf("POST did not complete")
 	defer func() {
 		r.Close() // Make sure pipe is terminated
