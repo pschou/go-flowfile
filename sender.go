@@ -52,6 +52,9 @@ func NewHTTPTransaction(url string, cfg *tls.Config) (*HTTPTransaction, error) {
 	}
 	hs.clientPool = sync.Pool{
 		New: func() any {
+			if Debug {
+				log.Println("Building client for pool")
+			}
 			return &http.Client{
 				Timeout: 30 * time.Second,
 				Transport: &http.Transport{
@@ -86,6 +89,10 @@ func (hs *HTTPTransaction) Handshake() error {
 
 	client := hs.clientPool.Get().(*http.Client)
 	defer hs.clientPool.Put(client)
+
+	if Debug {
+		log.Printf("HTTP.Client: %#v\n", *client)
+	}
 
 	req, err := http.NewRequest("HEAD", hs.url, nil)
 	if err != nil {
