@@ -171,6 +171,9 @@ func (hs *HTTPTransaction) Send(f *File) (err error) {
 	defer func() {
 		httpWriter.Close()
 		if httpWriter.Response == nil {
+			if Debug {
+				fmt.Println("err:", httpWriter.clientErr)
+			}
 			err = fmt.Errorf("File did not send, no response")
 		} else if httpWriter.Response.StatusCode != 200 {
 			err = fmt.Errorf("File did not send successfully, code %d", httpWriter.Response.StatusCode)
@@ -212,7 +215,7 @@ type HTTPPostWriter struct {
 	Sent          int64
 	hs            *HTTPTransaction
 	w             io.WriteCloser
-	err           error
+	//err           error
 
 	client    *http.Client
 	clientErr error
