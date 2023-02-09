@@ -1,6 +1,7 @@
 package flowfile_test
 
 import (
+	"crypto/tls"
 	"log"
 	"net/http"
 	"strings"
@@ -8,8 +9,10 @@ import (
 	"github.com/pschou/go-flowfile"
 )
 
+var tlsConfig *tls.Config
+
 func ExampleNewHTTPTransaction_Forwarding() {
-	txn, err := flowfile.NewHTTPTransaction("http://decimated:8080/contentListener", http.DefaultClient)
+	txn, err := flowfile.NewHTTPTransaction("http://decimated:8080/contentListener", tlsConfig)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -42,7 +45,7 @@ func ExampleNewHTTPTransaction_Forwarding() {
 
 func ExampleNewHTTPTransaction() {
 	// Create a new HTTPTransaction, used for sending batches of flowfiles
-	hs, err := flowfile.NewHTTPTransaction("http://localhost:8080/contentListener", http.DefaultClient)
+	hs, err := flowfile.NewHTTPTransaction("http://localhost:8080/contentListener", tlsConfig)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -56,7 +59,7 @@ func ExampleNewHTTPTransaction() {
 
 func ExampleSendConfig() {
 	// Create a new HTTPTransaction, used for sending batches of flowfiles
-	hs, err := flowfile.NewHTTPTransaction("http://localhost:8080/contentListener", http.DefaultClient)
+	hs, err := flowfile.NewHTTPTransaction("http://localhost:8080/contentListener", tlsConfig)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -113,7 +116,7 @@ func ExampleNewHTTPReceiver() {
 func ExampleHTTPPostWriter() {
 	ff1 := flowfile.New(strings.NewReader("test1"), 5)
 	ff2 := flowfile.New(strings.NewReader("test2"), 5)
-	ht, err := flowfile.NewHTTPTransaction("http://localhost:8080/contentListener", http.DefaultClient)
+	ht, err := flowfile.NewHTTPTransaction("http://localhost:8080/contentListener", tlsConfig)
 	if err != nil {
 		log.Fatal(err)
 	}

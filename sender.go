@@ -2,9 +2,11 @@ package flowfile // import "github.com/pschou/go-flowfile"
 
 import (
 	"bufio"
+	"crypto/tls"
 	"fmt"
 	"io"
 	"log"
+	"net"
 	"net/http"
 	"strconv"
 	"strings"
@@ -18,9 +20,14 @@ import (
 // endpoint is listening and compatible with the current flow file format.
 type HTTPTransaction struct {
 	url           string
-	client        *http.Client
 	Server        string
 	TransactionID string
+
+	// Create an upper bound for threading
+	MaxClients, clients int
+
+	tlsConfig  *tls.Config
+	clientPool sync.Pool
 
 	// Non-standard NiFi entities supported by this library
 	MaxPartitionSize int64  // Maximum partition size for partitioned file
@@ -32,13 +39,32 @@ type HTTPTransaction struct {
 }
 
 // Create the HTTP sender and verify that the remote side is listening.
-func NewHTTPTransaction(url string, client *http.Client) (*HTTPTransaction, error) {
+func NewHTTPTransaction(url string, cfg *tls.Config) (*HTTPTransaction, error) {
+	tlsConfig := cfg.Clone() // Create a copy for immutability
+
 	hs := &HTTPTransaction{
 		url:          url,
-		client:       client,
+		tlsConfig:    cfg,
 		CheckSumType: "SHA256",
-		//waitGroup:    sizedwaitgroup.New(4),
 	}
+	hs.clientPool = sync.Pool{
+		New: func() any {
+			return &http.Client{
+				Transport: &http.Transport{
+					Proxy: http.ProxyFromEnvironment,
+					DialContext: (&net.Dialer{
+						Timeout:   30 * time.Second,
+						KeepAlive: 30 * time.Second,
+					}).DialContext,
+					ForceAttemptHTTP2:     true,
+					MaxIdleConns:          100,
+					IdleConnTimeout:       90 * time.Second,
+					TLSHandshakeTimeout:   10 * time.Second,
+					ExpectContinueTimeout: 1 * time.Second,
+					TLSClientConfig:       tlsConfig.Clone(),
+				},
+			}
+		}}
 
 	err := hs.Handshake()
 	if err != nil {
@@ -54,6 +80,9 @@ func (hs *HTTPTransaction) Handshake() error {
 	hs.wait.Lock()
 	defer hs.wait.Unlock()
 
+	client := hs.clientPool.Get().(*http.Client)
+	defer hs.clientPool.Put(client)
+
 	req, err := http.NewRequest("HEAD", hs.url, nil)
 	if err != nil {
 		return err
@@ -63,7 +92,7 @@ func (hs *HTTPTransaction) Handshake() error {
 	req.Header.Set("x-nifi-transaction-id", txid)
 	req.Header.Set("Connection", "Keep-alive")
 	req.Header.Set("User-Agent", UserAgent)
-	res, err := hs.client.Do(req)
+	res, err := client.Do(req)
 	if err != nil {
 		return err
 	}
@@ -167,14 +196,18 @@ func (hs *HTTPTransaction) Close() (err error) {
 //   w.Write(ff2)
 //   err = w.Close() // Finalize the POST
 type HTTPPostWriter struct {
-	Header               http.Header
-	FlushInterval        time.Duration
-	Sent                 int64
-	hs                   *HTTPTransaction
-	w                    io.WriteCloser
-	err                  error
-	clientErr            error
-	Response             *http.Response
+	Header        http.Header
+	FlushInterval time.Duration
+	Sent          int64
+	hs            *HTTPTransaction
+	w             io.WriteCloser
+	err           error
+
+	client    *http.Client
+	clientErr error
+
+	Response *http.Response
+
 	writeLock, replyLock sync.Mutex
 	init                 func()
 }
@@ -184,9 +217,10 @@ type HTTPPostWriter struct {
 // closed.  Then the Response.StatusCode will be set with the reply from the
 // server.
 func (hw *HTTPPostWriter) Write(f *File) (n int64, err error) {
-	// Make sure only one is being written to the stream at once
-	hw.writeLock.Lock()
-	defer hw.writeLock.Unlock()
+	if hw.client == nil {
+		err = fmt.Errorf("HTTPTransaction Closed")
+		return
+	}
 
 	// On first write, initaite the POST
 	if hw.init != nil {
@@ -194,6 +228,11 @@ func (hw *HTTPPostWriter) Write(f *File) (n int64, err error) {
 		hw.init()
 		hw.init = nil
 	}
+
+	// Make sure only one is being written to the stream at once
+	hw.writeLock.Lock()
+	defer hw.writeLock.Unlock()
+
 	if hw.clientErr != nil {
 		err = hw.clientErr
 		return
@@ -211,6 +250,8 @@ func (hw *HTTPPostWriter) Close() (err error) {
 	hw.w.Close()
 	hw.replyLock.Lock()
 	hw.replyLock.Unlock()
+	hw.hs.clientPool.Put(hw.client)
+	hw.client = nil
 	return hw.clientErr
 }
 
@@ -222,6 +263,9 @@ func (hw *HTTPPostWriter) Close() (err error) {
 // However, HTTPPostWriter increases the chances of failures as all the sent
 // files will be marked as failed if the the HTTP POST is not a success.
 func (hs *HTTPTransaction) NewHTTPPostWriter() (httpWriter *HTTPPostWriter) {
+
+	client := hs.clientPool.Get().(*http.Client)
+
 	r, w := io.Pipe()
 	httpWriter = &HTTPPostWriter{
 		Header: make(http.Header),
@@ -230,6 +274,7 @@ func (hs *HTTPTransaction) NewHTTPPostWriter() (httpWriter *HTTPPostWriter) {
 		init: func() {
 			go doPost(hs, httpWriter, r)
 		},
+		client: client,
 	}
 	return
 }
@@ -250,11 +295,14 @@ func (hs *HTTPTransaction) NewHTTPBufferedPostWriter() (httpWriter *HTTPPostWrit
 		done: make(chan bool),
 	}
 
+	client := hs.clientPool.Get().(*http.Client)
+
 	httpWriter = &HTTPPostWriter{
 		Header:        make(http.Header),
 		w:             mlw,
 		hs:            hs,
 		FlushInterval: 400 * time.Millisecond,
+		client:        client,
 	}
 	httpWriter.init = func() {
 		mlw.latency = httpWriter.FlushInterval
@@ -292,7 +340,7 @@ func doPost(hs *HTTPTransaction, httpWriter *HTTPPostWriter, r io.ReadCloser) {
 	//if Debug {
 	//	log.Println("doing request", req)
 	//}
-	httpWriter.Response, httpWriter.clientErr = hs.client.Do(req)
+	httpWriter.Response, httpWriter.clientErr = httpWriter.client.Do(req)
 	if Debug {
 		log.Println("set reponse", httpWriter.Response, httpWriter.clientErr)
 	}
