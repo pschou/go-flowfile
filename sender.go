@@ -243,16 +243,15 @@ func (hw *HTTPPostWriter) Write(f *File) (n int64, err error) {
 		}
 	}()
 
+	// On first write, initaite the POST
+	if hw.init != nil {
+		hw.init()
+		hw.init = nil
+	}
+
 	if hw.client == nil {
 		err = fmt.Errorf("HTTPTransaction Closed")
 		return
-	}
-
-	// On first write, initaite the POST
-	if hw.init != nil {
-		//hw.replyLock.Lock()
-		hw.init()
-		hw.init = nil
 	}
 
 	if f.Size > 0 && f.Attrs.Get("checksumType") == "" {
@@ -269,7 +268,13 @@ func (hw *HTTPPostWriter) Close() (err error) {
 	defer hw.writeLock.Unlock()
 	hw.w.Close()
 
+	if Debug {
+		log.Println("closed channel, waiting for post reply")
+	}
 	err = <-hw.clientErr
+	if Debug {
+		log.Println("repied!")
+	}
 
 	hw.hs.clientPool.Put(hw.client)
 	hw.client = nil
