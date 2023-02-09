@@ -171,15 +171,15 @@ func (hs *HTTPTransaction) Send(f *File) (err error) {
 	defer func() {
 		httpWriter.Close()
 		if httpWriter.Response == nil {
-			if Debug {
-				fmt.Println("err:", httpWriter.clientErr)
-			}
 			err = fmt.Errorf("File did not send, no response")
 		} else if httpWriter.Response.StatusCode != 200 {
 			err = fmt.Errorf("File did not send successfully, code %d", httpWriter.Response.StatusCode)
 		}
 	}()
 	_, err = httpWriter.Write(f)
+	if Debug && err != nil {
+		fmt.Println("write err:", err)
+	}
 	return
 }
 
