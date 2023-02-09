@@ -218,7 +218,7 @@ type HTTPPostWriter struct {
 	//err           error
 
 	client    *http.Client
-	clientErr error
+	clientErr chan error
 
 	Response *http.Response
 
@@ -231,6 +231,16 @@ type HTTPPostWriter struct {
 // closed.  Then the Response.StatusCode will be set with the reply from the
 // server.
 func (hw *HTTPPostWriter) Write(f *File) (n int64, err error) {
+	// Make sure only one is being written to the stream at once
+	hw.writeLock.Lock()
+	defer hw.writeLock.Unlock()
+
+	defer func() {
+		if Debug && err != nil {
+			fmt.Println("write err:", err)
+		}
+	}()
+
 	if hw.client == nil {
 		err = fmt.Errorf("HTTPTransaction Closed")
 		return
@@ -243,14 +253,6 @@ func (hw *HTTPPostWriter) Write(f *File) (n int64, err error) {
 		hw.init = nil
 	}
 
-	// Make sure only one is being written to the stream at once
-	hw.writeLock.Lock()
-	defer hw.writeLock.Unlock()
-
-	if hw.clientErr != nil {
-		err = hw.clientErr
-		return
-	}
 	if f.Size > 0 && f.Attrs.Get("checksumType") == "" {
 		f.AddChecksum(hw.hs.CheckSumType)
 	}
@@ -261,12 +263,15 @@ func (hw *HTTPPostWriter) Write(f *File) (n int64, err error) {
 
 // Close the HTTPPostWriter and flush the data to the stream
 func (hw *HTTPPostWriter) Close() (err error) {
+	hw.writeLock.Lock()
+	defer hw.writeLock.Unlock()
 	hw.w.Close()
-	hw.replyLock.Lock()
-	hw.replyLock.Unlock()
+
+	err = <-hw.clientErr
+
 	hw.hs.clientPool.Put(hw.client)
 	hw.client = nil
-	return hw.clientErr
+	return err
 }
 
 // NewHTTPPostWriter creates a POST to a NiFi listening endpoint and allows
@@ -358,8 +363,10 @@ func doPost(hs *HTTPTransaction, httpWriter *HTTPPostWriter, r io.ReadCloser) {
 	//if Debug {
 	//	log.Println("doing request", req)
 	//}
-	httpWriter.Response, httpWriter.clientErr = httpWriter.client.Do(req)
+	var err error
+	httpWriter.Response, err = httpWriter.client.Do(req)
 	if Debug {
 		log.Println("set reponse", httpWriter.Response, httpWriter.clientErr)
 	}
+	httpWriter.clientErr <- err
 }
