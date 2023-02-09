@@ -40,7 +40,7 @@ type HTTPTransaction struct {
 
 // Create the HTTP sender and verify that the remote side is listening.
 func NewHTTPTransaction(url string, cfg *tls.Config) (*HTTPTransaction, error) {
-	var tlsConfig *tlsConfig
+	var tlsConfig *tls.Config
 	if tlsConfig != nil {
 		tlsConfig = cfg.Clone() // Create a copy for immutability
 	}
