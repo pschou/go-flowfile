@@ -2,6 +2,7 @@ package flowfile // import "github.com/pschou/go-flowfile"
 
 import (
 	"io"
+	"net/http"
 )
 
 // A wrapper around an io.Reader which parses out the flow files.
@@ -9,6 +10,7 @@ type Scanner struct {
 	r         io.Reader
 	err       error
 	last, one *File
+	resp      *http.ResponseWriter
 }
 
 // Create a new FlowFile reader, wrapping io.Reader for reading consecutive
@@ -72,6 +74,7 @@ func (r *Scanner) Scan() bool {
 
 	r.last, r.err = ReadFile(r.r)
 	if r.last != nil {
+		r.last.resp = r.resp
 		r.last.cksumInit()
 	}
 	return r.last != nil

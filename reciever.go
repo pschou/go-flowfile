@@ -100,7 +100,7 @@ func (f HTTPReceiver) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 		switch ct := strings.ToLower(r.Header.Get("Content-Type")); ct {
 		case "application/flowfile-v3":
-			reader := &Scanner{r: Body}
+			reader := &Scanner{r: Body, resp: &w}
 			if err = f.handler(reader, r); err != nil {
 				return
 			}
@@ -110,7 +110,7 @@ func (f HTTPReceiver) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			}
 		default:
 			if N, err := strconv.ParseUint(r.Header.Get("Content-Length"), 10, 64); err == nil {
-				reader := &Scanner{one: &File{r: Body, n: int64(N)}}
+				reader := &Scanner{one: &File{r: Body, n: int64(N), resp: &w}}
 				if err = f.handler(reader, r); err != nil {
 					return
 				}

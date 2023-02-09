@@ -92,6 +92,7 @@ import (
 	"hash"
 	"io"
 	"io/ioutil"
+	"net/http"
 )
 
 var (
@@ -113,8 +114,9 @@ type File struct {
 	Size  int64 // total size
 
 	// one of the following must be set
-	r  io.Reader   // underlying Read
-	ra io.ReaderAt // underlying ReadAt
+	r    io.Reader            // underlying Read
+	ra   io.ReaderAt          // underlying ReadAt
+	resp *http.ResponseWriter // pointer back to the original stream
 
 	cksumStatus int8
 	cksum       hash.Hash
