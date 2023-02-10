@@ -155,15 +155,15 @@ func (l *File) Reset() error {
 
 // Read will read the content from a FlowFile
 func (l *File) Read(p []byte) (n int, err error) {
+	if l.n <= 0 || l.Size == 0 {
+		return 0, io.EOF
+	}
 	if l.filePath != "" && l.ra == nil {
 		fh, err := os.Open(l.filePath)
 		if err != nil {
 			return 0, err
 		}
 		l.ra = fh
-	}
-	if l.n <= 0 {
-		return 0, io.EOF
 	}
 	if int64(len(p)) > l.n {
 		p = p[0:l.n]
