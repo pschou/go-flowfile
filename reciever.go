@@ -77,7 +77,6 @@ func (f HTTPReceiver) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	case "POST":
 		// Handle the post request method
 		Body := r.Body
-		var err error
 		defer func() {
 			io.Copy(ioutil.Discard, Body)
 			Body.Close()
@@ -85,14 +84,6 @@ func (f HTTPReceiver) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			hdr.Set("Content-Length", "0")
 			if f.Server != "" {
 				hdr.Set("Server", f.Server)
-			}
-			if err == nil {
-				w.WriteHeader(http.StatusOK)
-			} else {
-				if Debug {
-					log.Printf("Error: %s", err)
-				}
-				w.WriteHeader(http.StatusInternalServerError)
 			}
 		}()
 
@@ -103,7 +94,7 @@ func (f HTTPReceiver) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			reader.Close()
 			if reader.err != nil {
 				if Debug && reader.Err() != nil {
-					log.Printf("Error: %s", err)
+					log.Printf("Scanner Error: %s", reader.err)
 				}
 				return
 			}
