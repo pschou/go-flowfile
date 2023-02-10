@@ -195,10 +195,10 @@ func (hs *HTTPTransaction) SendAll(ff []*File) (err error) {
 		_, err = httpWriter.Write(f)
 		if err != nil {
 			httpWriter.Terminate()
-			return
 			if Debug {
 				fmt.Println("write err:", err)
 			}
+			return
 		}
 	}
 	return
