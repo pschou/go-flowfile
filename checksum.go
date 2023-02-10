@@ -110,7 +110,21 @@ func (f *File) AddChecksum(cksum string) error {
 	if new == nil {
 		return fmt.Errorf("Unable to find checksum type: %q", cksum)
 	}
-	if ra := f.ra; ra != nil {
+
+	ra := f.ra
+
+	// Case where the file is not currently open, open and do the checksum and close
+	if ra == nil && f.filePath != "" {
+		if fh, err := os.Open(f.filePath); err != nil {
+			return err
+		} else {
+			ra = fh
+			defer fh.Close()
+		}
+	}
+
+	if ra != nil {
+		// We have a ReadAt reader, do the checksum!
 		bufp := bufPool.Get().(*[]byte)
 		defer bufPool.Put(bufp)
 		buf := *bufp
