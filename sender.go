@@ -175,6 +175,35 @@ func (hs *HTTPTransaction) Send(f *File) (err error) {
 	return
 }
 
+// Send a set of flow files to the remote server and return any errors back.
+// A nil return for error is a successful send.
+//
+// This method of sending will make one POST-per-file which is not recommended
+// for small files.  To increase throughput on smaller files one should
+// consider using either NewHTTPPostWriter or NewHTTPBufferedPostWriter.
+func (hs *HTTPTransaction) SendAll(ff []*File) (err error) {
+	httpWriter := hs.NewHTTPPostWriter()
+	defer func() {
+		httpWriter.Close()
+		if httpWriter.Response == nil {
+			err = fmt.Errorf("File did not send, no response")
+		} else if httpWriter.Response.StatusCode != 200 {
+			err = fmt.Errorf("File did not send successfully, code %d", httpWriter.Response.StatusCode)
+		}
+	}()
+	for _, f := range ff {
+		_, err = httpWriter.Write(f)
+		if err != nil {
+			httpWriter.Terminate()
+			return
+			if Debug {
+				fmt.Println("write err:", err)
+			}
+		}
+	}
+	return
+}
+
 // Writer ecapsulates the ability to write one or more flow files in one POST
 // request.  This must be closed upon completion of the last File sent.
 //
