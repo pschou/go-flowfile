@@ -30,7 +30,10 @@ func ExampleUnmarshal() {
 	dat := []byte("NiFiFF3\x00\x02\x00\x04path\x00\x02./\x00\bfilename\x00\tabcd-efgh\x00\x00\x00\x00\x00\x00\x00$this is a custom string for flowfile")
 
 	var f flowfile.File
-	flowfile.Unmarshal(dat, &f)
+	err := flowfile.Unmarshal(dat, &f)
+	if err != nil {
+		fmt.Println("Error unmarshalling:", err)
+	}
 	fmt.Printf("Attrs: %#v\n", f.Attrs)
 
 	buf := bytes.NewBuffer([]byte{})
@@ -58,10 +61,12 @@ func ExampleNewScanner() {
 		buf.ReadFrom(f)
 		fmt.Printf("content: %q\n", buf.String())
 	}
+	fmt.Println("Check for errors:", s.Err())
 
 	// Output:
 	// attributes: flowfile.Attributes{flowfile.Attribute{Name:"path", Value:"./"}, flowfile.Attribute{Name:"filename", Value:"abcd-efgh"}}
 	// content: "this is a custom string for flowfile"
+	// Check for errors: EOF
 }
 
 // A calling method should do the due diligence of closing the inner reader

@@ -92,7 +92,7 @@ import (
 	"hash"
 	"io"
 	"io/ioutil"
-	"net/http"
+	"os"
 )
 
 var (
@@ -114,10 +114,14 @@ type File struct {
 	Size  int64 // total size
 
 	// one of the following must be set
-	r    io.Reader            // underlying Read
-	ra   io.ReaderAt          // underlying ReadAt
-	resp *http.ResponseWriter // pointer back to the original stream
+	r  io.Reader   // underlying Read
+	ra io.ReaderAt // underlying ReadAt (if available)
 
+	// If a ReadFile is called
+	filePath string      // path to file on disk
+	fileInfo os.FileInfo // information about the file
+
+	// Checksum holder for post-stream checksum verification
 	cksumStatus int8
 	cksum       hash.Hash
 }
@@ -151,6 +155,13 @@ func (l *File) Reset() error {
 
 // Read will read the content from a FlowFile
 func (l *File) Read(p []byte) (n int, err error) {
+	if l.filePath != "" && l.ra == nil {
+		fh, err := os.Open(l.filePath)
+		if err != nil {
+			return 0, err
+		}
+		l.ra = fh
+	}
 	if l.n <= 0 {
 		return 0, io.EOF
 	}
@@ -179,6 +190,11 @@ func (l *File) Read(p []byte) (n int, err error) {
 // current payload from consideration and moving the reader pointer forward,
 // making the next flowfile available for reading.
 func (l *File) Close() (err error) {
+	if l.filePath != "" {
+		fh := l.ra.(*os.File)
+		return fh.Close()
+	}
+
 	switch {
 	case l.ra != nil:
 	case l.r != nil:

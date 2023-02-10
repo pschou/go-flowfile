@@ -22,6 +22,7 @@ type HTTPTransaction struct {
 	url           string
 	Server        string
 	TransactionID string
+	lastSend      time.Time
 
 	tlsConfig  *tls.Config
 	clientPool sync.Pool
@@ -125,6 +126,7 @@ func (hs *HTTPTransaction) Handshake() error {
 		if !hasFF {
 			return fmt.Errorf("Server does not support flowfile-v3")
 		}
+		hs.lastSend = time.Now()
 	}
 
 	// Check for protocol version
@@ -200,8 +202,7 @@ type HTTPPostWriter struct {
 
 	client    *http.Client
 	clientErr chan error
-
-	Response *http.Response
+	Response  *http.Response
 
 	writeLock sync.Mutex
 	init      func()

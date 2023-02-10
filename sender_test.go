@@ -18,7 +18,7 @@ func ExampleNewHTTPTransaction_Forwarding() {
 	}
 
 	var counter int
-	myDecimator := flowfile.NewHTTPReceiver(func(s *flowfile.Scanner, r *http.Request) error {
+	myDecimator := flowfile.NewHTTPReceiver(func(s *flowfile.Scanner, w http.ResponseWriter, r *http.Request) error {
 		pw := txn.NewHTTPPostWriter()
 		defer pw.Close()
 
@@ -76,7 +76,7 @@ func ExampleSendConfig() {
 }
 
 func ExampleNewHTTPFileReceiver() {
-	ffReceiver := flowfile.NewHTTPFileReceiver(func(f *flowfile.File, r *http.Request) error {
+	ffReceiver := flowfile.NewHTTPFileReceiver(func(f *flowfile.File, w http.ResponseWriter, r *http.Request) error {
 		log.Println("Got file", f.Attrs.Get("filename"))
 		// do stuff with file
 		return nil
@@ -90,7 +90,7 @@ func ExampleNewHTTPFileReceiver() {
 }
 
 func ExampleNewHTTPReceiver() {
-	ffReceiver := flowfile.NewHTTPReceiver(func(fs *flowfile.Scanner, r *http.Request) error {
+	ffReceiver := flowfile.NewHTTPReceiver(func(fs *flowfile.Scanner, w http.ResponseWriter, r *http.Request) error {
 		// Loop over all the files in the post payload
 		count := 0
 		for fs.Scan() {

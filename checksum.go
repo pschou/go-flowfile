@@ -97,8 +97,11 @@ func (l *File) cksumInit() {
 
 // Add checksum to flowfile, requires a ReadAt interface in the flowfile context.
 //
-// Note: The checksums cannot be added to a stream as the header would have already
-// been sent, hence why the ReadAt interface is important.
+// Note: The checksums cannot be added to a streamed File (io.Reader) as the
+// header would have already been sent and could not be placed in the header as
+// the payload would have been sent on the wire already.  Hence, read the
+// content, build checksum and add to header.   Hence why the io.ReaderAt
+// interface is important.
 func (f *File) AddChecksum(cksum string) error {
 	if f.Size == 0 {
 		return nil // Don't add checksum for empty files

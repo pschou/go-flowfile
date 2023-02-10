@@ -16,26 +16,26 @@ type HTTPReceiver struct {
 	Server           string
 	MaxPartitionSize int64
 
-	handler func(*Scanner, *http.Request) error
+	handler func(*Scanner, http.ResponseWriter, *http.Request) error
 	//BytesSeen        uint64
 }
 
 // NewHTTPReceiver interfaces with the built-in HTTP Handler and parses out the
 // FlowFile stream and provids a FlowFile scanner to a FlowFile handler.
-func NewHTTPReceiver(handler func(*Scanner, *http.Request) error) *HTTPReceiver {
+func NewHTTPReceiver(handler func(*Scanner, http.ResponseWriter, *http.Request) error) *HTTPReceiver {
 	return &HTTPReceiver{handler: handler}
 }
 
 // NewHTTPFileReceiver interfaces with the built-in HTTP Handler and parses out
 // the individual FlowFiles from a stream and sends them to a FlowFile handler.
-func NewHTTPFileReceiver(handler func(*File, *http.Request) error) *HTTPReceiver {
-	return &HTTPReceiver{handler: func(s *Scanner, r *http.Request) (err error) {
+func NewHTTPFileReceiver(handler func(*File, http.ResponseWriter, *http.Request) error) *HTTPReceiver {
+	return &HTTPReceiver{handler: func(s *Scanner, w http.ResponseWriter, r *http.Request) (err error) {
 		var ff *File
 		for s.Scan() {
 			if ff, err = s.File(); err != nil {
 				return
 			}
-			if err = handler(ff, r); err != nil {
+			if err = handler(ff, w, r); err != nil {
 				return
 			}
 		}
@@ -94,14 +94,13 @@ func (f HTTPReceiver) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 					log.Printf("Error: %s", err)
 				}
 				w.WriteHeader(http.StatusInternalServerError)
-				//http.Error(w, fmt.Sprintf("Error %s", err), http.StatusInternalServerError)
 			}
 		}()
 
 		switch ct := strings.ToLower(r.Header.Get("Content-Type")); ct {
 		case "application/flowfile-v3":
-			reader := &Scanner{r: Body, resp: &w}
-			if err = f.handler(reader, r); err != nil {
+			reader := &Scanner{r: Body}
+			if err = f.handler(reader, w, r); err != nil {
 				return
 			}
 			reader.Close()
@@ -110,8 +109,8 @@ func (f HTTPReceiver) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			}
 		default:
 			if N, err := strconv.ParseUint(r.Header.Get("Content-Length"), 10, 64); err == nil {
-				reader := &Scanner{one: &File{r: Body, n: int64(N), resp: &w}}
-				if err = f.handler(reader, r); err != nil {
+				reader := &Scanner{one: &File{r: Body, n: int64(N)}}
+				if err = f.handler(reader, w, r); err != nil {
 					return
 				}
 				reader.Close()
