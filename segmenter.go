@@ -21,7 +21,7 @@ func Segment(in *File, count int64) (out []*File, err error) {
 // avoid having to replay sending a whole file in case a connection gets
 // dropped.
 func SegmentBySize(in *File, segmentSize int64) (out []*File, err error) {
-	if in.ra == nil && in.filePath != "" {
+	if in.ra == nil && in.filePath == "" {
 		return nil, fmt.Errorf("Must have a reader with ReadAt capabilities to segment")
 	}
 
@@ -72,6 +72,6 @@ func SegmentBySize(in *File, segmentSize int64) (out []*File, err error) {
 		f.Attrs.GenerateUUID()
 		out = append(out, f)
 	}
-	in.ra, in.n = nil, 0
+	in.ra, in.i, in.n = nil, in.i-in.n, 0
 	return
 }
