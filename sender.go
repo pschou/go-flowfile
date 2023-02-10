@@ -182,7 +182,7 @@ func (hs *HTTPTransaction) Send(f *File) (err error) {
 // for small files.  To increase throughput on smaller files one should
 // consider using either NewHTTPPostWriter or NewHTTPBufferedPostWriter.
 func (hs *HTTPTransaction) SendAll(ff []*File) (err error) {
-	httpWriter := hs.NewHTTPPostWriter()
+	httpWriter := hs.NewHTTPBufferedPostWriter()
 	defer func() {
 		httpWriter.Close()
 		if httpWriter.Response == nil {
