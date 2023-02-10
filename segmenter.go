@@ -21,7 +21,7 @@ func Segment(in *File, count int64) (out []*File, err error) {
 // avoid having to replay sending a whole file in case a connection gets
 // dropped.
 func SegmentBySize(in *File, segmentSize int64) (out []*File, err error) {
-	if in.ra == nil {
+	if in.ra == nil && in.filePath != "" {
 		return nil, fmt.Errorf("Must have a reader with ReadAt capabilities to segment")
 	}
 
@@ -58,11 +58,12 @@ func SegmentBySize(in *File, segmentSize int64) (out []*File, err error) {
 		}
 
 		f := &File{
-			ra:    in.ra,
-			i:     st,
-			Size:  en - st,
-			n:     en - st,
-			Attrs: baseAttrs.Clone(),
+			ra:       in.ra,
+			filePath: in.filePath,
+			i:        st,
+			Size:     en - st,
+			n:        en - st,
+			Attrs:    baseAttrs.Clone(),
 		}
 		f.Attrs.Set("merge.reason", "MAX_BYTES_THRESHOLD_REACHED")
 		f.Attrs.Set("fragment.offset", fmt.Sprintf("%d", st))
