@@ -12,6 +12,11 @@ import (
 	"github.com/djherbis/times"
 )
 
+// If the File was created with NewFromDisk, return the filename referenced.
+func (f File) FilePath() string {
+	return f.filePath
+}
+
 // NewFromDisk creates a new File struct from a file on disk.  One should add
 // attributes before writing it to a stream.
 //
