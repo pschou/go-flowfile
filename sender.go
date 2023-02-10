@@ -191,13 +191,16 @@ func (hs *HTTPTransaction) SendAll(ff []*File) (err error) {
 			err = fmt.Errorf("File did not send successfully, code %d", httpWriter.Response.StatusCode)
 		}
 	}()
-	for _, f := range ff {
+	for i, f := range ff {
+		if Debug {
+			fmt.Printf("  sending item #%d\n", i)
+		}
 		_, err = httpWriter.Write(f)
 		if err != nil {
-			httpWriter.Terminate()
 			if Debug {
 				fmt.Println("write err:", err)
 			}
+			httpWriter.Terminate()
 			return
 		}
 	}

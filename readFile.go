@@ -53,6 +53,7 @@ func NewFromDisk(filename string) (*File, error) {
 		f.Attrs.add("file.permissions", mode.String())
 	case mode.IsDir():
 		f.Attrs.add("kind", "dir")
+		f.Attrs.add("file.permissions", mode.String())
 	case mode&fs.ModeSymlink != 0:
 		target, _ := os.Readlink(filename)
 
