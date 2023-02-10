@@ -10,14 +10,15 @@ import (
 )
 
 // Sends files out a writer, making sure the headers are sent before each file is sent.
-func ExampleFile_WriteFile() {
+func ExampleNewEncoder() {
 	wire := bytes.NewBuffer([]byte{})
+	enc := flowfile.NewWriter(wire)
 	{
 		dat := []byte("this is a custom string for flowfile")
 		ff := flowfile.New(bytes.NewReader(dat), int64(len(dat)))
 		ff.Attrs.Set("path", "./")
 		ff.Attrs.Set("filename", "abcd-efgh")
-		ff.WriteFile(wire)
+		enc.Write(ff)
 	}
 	fmt.Printf("wire: %q\n", wire.String())
 
@@ -50,10 +51,7 @@ func ExampleNewScanner() {
 
 	s := flowfile.NewScanner(wire)
 	for s.Scan() { // Scan for another FlowFile in the stream
-		f, err := s.File()
-		if err != nil {
-			log.Fatal("Error parsing ff:", err)
-		}
+		f := s.File()
 
 		fmt.Printf("attributes: %#v\n", f.Attrs)
 
@@ -66,7 +64,7 @@ func ExampleNewScanner() {
 	// Output:
 	// attributes: flowfile.Attributes{flowfile.Attribute{Name:"path", Value:"./"}, flowfile.Attribute{Name:"filename", Value:"abcd-efgh"}}
 	// content: "this is a custom string for flowfile"
-	// Check for errors: EOF
+	// Check for errors: <nil>
 }
 
 // A calling method should do the due diligence of closing the inner reader

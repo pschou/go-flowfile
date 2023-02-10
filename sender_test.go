@@ -11,32 +11,51 @@ import (
 
 var tlsConfig *tls.Config
 
-func ExampleNewHTTPTransaction_Forwarding() {
+func ExampleNewHTTPTransaction_FilteredForward() {
+	// Create a endpoint to send FlowFiles to:
+	txn, err := flowfile.NewHTTPTransaction("http://target:8080/contentListener", nil)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// Setup a receiver method to deal with incoming flowfiles
+	myFilter := flowfile.NewHTTPFileReceiver(func(f *flowfile.File, w http.ResponseWriter, r *http.Request) error {
+		if f.Attrs.Get("project") == "ProjectA" {
+			return txn.Send(f) // Forward only ProjectA related FlowFiles
+		}
+		return nil // Drop the rest
+	})
+	http.Handle("/contentListener", myFilter) // Add the listener to a path
+	http.ListenAndServe(":8080", nil)         // Start accepting connections
+}
+
+func ExampleNewHTTPTransaction_ForwardingWithCounter() {
 	txn, err := flowfile.NewHTTPTransaction("http://decimated:8080/contentListener", tlsConfig)
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	var counter int
-	myDecimator := flowfile.NewHTTPReceiver(func(s *flowfile.Scanner, w http.ResponseWriter, r *http.Request) error {
+	myDecimator := flowfile.NewHTTPReceiver(func(s *flowfile.Scanner, w http.ResponseWriter, r *http.Request) {
 		pw := txn.NewHTTPPostWriter()
-		defer pw.Close()
+		defer pw.Close() // Ensure the POST is sent when the transaction finishes.
 
 		for s.Scan() {
-			f, err := s.File()
-			if err != nil {
-				return err
-			}
-
-			counter++
-			if counter%10 == 1 {
-				_, err = pw.Write(f) // Forward only 1 of every 10 Files
-				if err != nil {
-					return err
+			f := s.File()
+			if counter++; counter%10 == 1 { // Forward only 1 of every 10 Files
+				if _, err = pw.Write(f); err != nil { // Oops, something unexpected bad happened
+					w.WriteHeader(http.StatusInternalServerError) // Return an error
+					pw.Terminate()
+					return
 				}
 			}
 		}
-		return nil // Drop the rest
+		if err := s.Err(); err != nil {
+			log.Println("Error:", err)
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		w.WriteHeader(http.StatusOK) // Drop the rest by claiming all is ok
 	})
 
 	http.Handle("/contentDecimator", myDecimator) // Add the listener to a path
@@ -90,38 +109,43 @@ func ExampleNewHTTPFileReceiver() {
 }
 
 func ExampleNewHTTPReceiver() {
-	ffReceiver := flowfile.NewHTTPReceiver(func(fs *flowfile.Scanner, w http.ResponseWriter, r *http.Request) error {
+	ffReceiver := flowfile.NewHTTPReceiver(func(fs *flowfile.Scanner, w http.ResponseWriter, r *http.Request) {
 		// Loop over all the files in the post payload
 		count := 0
 		for fs.Scan() {
 			count++
-			f, err := fs.File()
-			if err != nil {
-				return err
-			}
+			f := fs.File()
 			log.Println("Got file", f.Attrs.Get("filename"))
 			// do stuff with file
 		}
+
+		if err := fs.Err(); err != nil {
+			log.Println("Error:", err)
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
 		log.Println(count, "file(s) in POST payload")
-		return nil
+		w.WriteHeader(http.StatusOK)
 	})
 
-	// Add this reciever to the path
-	http.Handle("/contentListener", ffReceiver)
-
-	// Start accepting files
-	http.ListenAndServe(":8080", nil)
+	http.Handle("/contentListener", ffReceiver) // Add this reciever to the path
+	http.ListenAndServe(":8080", nil)           // Start accepting files
 }
 
 func ExampleHTTPPostWriter() {
+	// Build two small files
 	ff1 := flowfile.New(strings.NewReader("test1"), 5)
 	ff2 := flowfile.New(strings.NewReader("test2"), 5)
+
+	// Prepare an HTTP transaction
 	ht, err := flowfile.NewHTTPTransaction("http://localhost:8080/contentListener", tlsConfig)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	w := ht.NewHTTPPostWriter() // Create the POST to the NiFi endpoint
+	// Post the files to the endpoint
+	w := ht.NewHTTPPostWriter()
 	w.Write(ff1)
 	w.Write(ff2)
 	err = w.Close() // Finalize the POST

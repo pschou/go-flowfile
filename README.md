@@ -11,20 +11,20 @@ filtering and forwarding method would be written:
 ```golang
 func main() {
   // Create a endpoint to send FlowFiles to:
-  txn, err := flowfile.NewHTTPTransaction("http://target:8080/contentListener", http.DefaultClient)
+  txn, err := flowfile.NewHTTPTransaction("http://target:8080/contentListener", nil)
   if err != nil {
     log.Fatal(err)
   }
 
   // Setup a receiver method to deal with incoming flowfiles
-  myFilter := flowfile.NewHTTPFileReceiver(func(f *flowfile.File, r *http.Request) error {
+  myFilter := flowfile.NewHTTPFileReceiver(func(f *flowfile.File, w http.ResponseWriter, r *http.Request) error {
     if f.Attrs.Get("project") == "ProjectA" {
-      return txn.Send(f)  // Forward only ProjectA related FlowFiles
+      return txn.Send(f) // Forward only ProjectA related FlowFiles
     }
-    return nil            // Drop the rest
+    return nil // Drop the rest
   })
-  http.Handle("/contentListener", myFilter)  // Add the listener to a path
-  http.ListenAndServe(":8080", nil)          // Start accepting connections
+  http.Handle("/contentListener", myFilter) // Add the listener to a path
+  http.ListenAndServe(":8080", nil)         // Start accepting connections
 }
 ```
 
@@ -34,31 +34,32 @@ bundles together in one POST:
 
 ```golang
 func main() {
-  txn, err := flowfile.NewHTTPTransaction("http://decimated:8080/contentListener", http.DefaultClient)
+  txn, err := flowfile.NewHTTPTransaction("http://decimated:8080/contentListener", tlsConfig)
   if err != nil {
     log.Fatal(err)
   }
 
   var counter int
-  myDecimator := flowfile.NewHTTPReceiver(func(s *flowfile.Scanner, r *http.Request) error {
-    pw := txn.NewHTTPBufferedPostWriter()  // Create a new POST downstream
-    defer pw.Close()               // Close the POST at function return
+  myDecimator := flowfile.NewHTTPReceiver(func(s *flowfile.Scanner, w http.ResponseWriter, r *http.Request) {
+    pw := txn.NewHTTPPostWriter()
+    defer pw.Close() // Ensure the POST is sent when the transaction finishes.
 
-    for s.Scan() {                 // Read the next file off the stream
-      f, err := s.File()
-      if err != nil {
-        return err
-      }
-
-      counter++
-      if counter%10 == 1 {
-        _, err = pw.Write(f)       // Forward only 1 of every 10 Files
-        if err != nil {
-          return err
+    for s.Scan() {
+      f := s.File()
+      if counter++; counter%10 == 1 { // Forward only 1 of every 10 Files
+        if _, err = pw.Write(f); err != nil { // Oops, something unexpected bad happened
+          w.WriteHeader(http.StatusInternalServerError) // Return an error
+          pw.Terminate()
+          return
         }
       }
     }
-    return nil // Drop the rest
+    if err := s.Err(); err != nil {
+      log.Println("Error:", err)
+      w.WriteHeader(http.StatusInternalServerError)
+      return
+    }
+    w.WriteHeader(http.StatusOK) // Drop the rest by claiming all is ok
   })
 
   http.Handle("/contentDecimator", myDecimator) // Add the listener to a path

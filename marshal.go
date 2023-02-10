@@ -6,10 +6,21 @@ import (
 	"fmt"
 	"io"
 	"log"
-	"os"
 )
 
+type Writer struct {
+	w io.Writer
+}
+
+func NewWriter(w io.Writer) *Writer {
+	return &Writer{w: w}
+}
+
 // Encode a flowfile into an io.Writer
+func (e *Writer) Write(f *File) (n int64, err error) {
+	return writeTo(e.w, f)
+}
+
 func writeTo(out io.Writer, f *File) (n int64, err error) {
 	header := bytes.NewBuffer([]byte{})
 	if err = f.Attrs.WriteTo(header); err != nil {
@@ -37,9 +48,10 @@ func writeTo(out io.Writer, f *File) (n int64, err error) {
 // Marshal a FlowFile into a byte slice.
 //
 // Note: This is not preferred as it can cause memory bloat.
-func Marshal(f File) (dat []byte, err error) {
+func Marshal(f *File) (dat []byte, err error) {
 	buf := bytes.NewBuffer(dat)
-	_, err = f.WriteFile(buf)
+	enc := &Writer{w: buf}
+	_, err = enc.Write(f)
 	dat = buf.Bytes()
 	return
 }
@@ -69,30 +81,6 @@ func ParseFlow(in io.Reader) (f *File, err error) {
 		f.r = in
 	}
 	return
-}
-
-// Create a new File struct from a file on disk.  One should add
-// attributes before writing it to a stream.
-//
-// Note that the file is not kept open, an initial checksum is done
-// and then the file is closed to prevent file pointers from stacking up.
-// However, once a file is used, the file handle remains open until
-// Close() is called.
-func ReadFile(file string) (*File, error) {
-	fh, err := os.Open(file)
-	if err != nil {
-		return nil, err
-	}
-	defer fh.Close()
-
-	f := &File{filePath: file}
-	if f.fileInfo, err = fh.Stat(); err != nil {
-		return nil, err
-	}
-
-	f.Size = f.fileInfo.Size()
-	f.n = f.Size
-	return f, nil
 }
 
 // Unmarshal parses a FlowFile formatted byte slice into a File struct for

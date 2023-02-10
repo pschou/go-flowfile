@@ -198,7 +198,7 @@ type HTTPPostWriter struct {
 	Sent          int64
 	hs            *HTTPTransaction
 	w             io.WriteCloser
-	//err           error
+	pw            *io.PipeWriter
 
 	client    *http.Client
 	clientErr chan error
@@ -262,6 +262,11 @@ func (hw *HTTPPostWriter) Close() (err error) {
 	return err
 }
 
+// Terminate the HTTPPostWriter
+func (hw *HTTPPostWriter) Terminate() {
+	hw.pw.CloseWithError(fmt.Errorf("Post Terminated"))
+}
+
 // NewHTTPPostWriter creates a POST to a NiFi listening endpoint and allows
 // multiple files to be written to the endpoint at one time.  This reduces
 // additional overhead (with fewer HTTP reponses) and decreases latency (by
@@ -280,6 +285,7 @@ func (hs *HTTPTransaction) NewHTTPPostWriter() (httpWriter *HTTPPostWriter) {
 	r, w := io.Pipe()
 	httpWriter = &HTTPPostWriter{
 		Header:    make(http.Header),
+		pw:        w,
 		w:         w,
 		hs:        hs,
 		client:    client,
@@ -311,6 +317,7 @@ func (hs *HTTPTransaction) NewHTTPBufferedPostWriter() (httpWriter *HTTPPostWrit
 
 	httpWriter = &HTTPPostWriter{
 		Header:        make(http.Header),
+		pw:            w,
 		w:             mlw,
 		hs:            hs,
 		FlushInterval: 400 * time.Millisecond,

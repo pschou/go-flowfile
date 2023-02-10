@@ -61,6 +61,13 @@ func (h *Attributes) GenerateUUID() string {
 	return puuid
 }
 
+// Internal call for adding attributes without duplicate checks
+func (h *Attributes) add(name, val string) {
+	attrs := []Attribute(*h)
+	attrs = append(attrs, Attribute{name, val})
+	*h = Attributes(attrs)
+}
+
 // Sets the attribute with the given value, takes two inputs the first is the
 // attribute name and the second is the attribute value.  It returns the
 // attributes for function stacking.
