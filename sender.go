@@ -154,12 +154,7 @@ func (hs *HTTPTransaction) Handshake() error {
 	return nil
 }
 
-// Send a flow file to the remote server and return any errors back.
-// A nil return for error is a successful send.
-//
-// This method of sending will make one POST-per-file which is not recommended
-// for small files.  To increase throughput on smaller files one should
-// consider using either NewHTTPPostWriter or NewHTTPBufferedPostWriter.
+/*
 func (hs *HTTPTransaction) Send(f *File) (err error) {
 	httpWriter := hs.NewHTTPPostWriter()
 	defer func() {
@@ -176,14 +171,15 @@ func (hs *HTTPTransaction) Send(f *File) (err error) {
 	}
 	return
 }
+*/
 
-// Send a set of flow files to the remote server and return any errors back.
+// Send one or more flow files to the remote server and return any errors back.
 // A nil return for error is a successful send.
 //
 // This method of sending will make one POST-per-file which is not recommended
 // for small files.  To increase throughput on smaller files one should
 // consider using either NewHTTPPostWriter or NewHTTPBufferedPostWriter.
-func (hs *HTTPTransaction) SendAll(ff []*File) (err error) {
+func (hs *HTTPTransaction) Send(ff ...*File) (err error) {
 	httpWriter := hs.NewHTTPBufferedPostWriter()
 	defer func() {
 		httpWriter.Close()
@@ -205,6 +201,48 @@ func (hs *HTTPTransaction) SendAll(ff []*File) (err error) {
 			httpWriter.Terminate()
 			return
 		}
+	}
+	return
+}
+
+// Send one or more flow files to the remote server and return any errors back.
+// A failed send will be retried (1+retries) times with a delay between retries.
+// A nil return for error is a successful send.
+//
+//   // With one or more files:
+//   err = hs.SendWithRetries(5, 15 * time.Second, file1, file2)
+//   // A slice of files:
+//   err = hs.SendWithRetries(5, 15 * time.Second, files...)
+//
+// This method of sending will make one POST-per-file which is not recommended
+// for small files.  To increase throughput on smaller files one should
+// consider using either NewHTTPPostWriter or NewHTTPBufferedPostWriter.
+func (hs *HTTPTransaction) SendWithRetries(retries int, delay time.Duration, ff ...*File) (err error) {
+	// Verify we can send with retries, the sender must be resettable
+	for _, f := range ff {
+		if err = f.Reset(); err != nil {
+			return
+		}
+	}
+
+	// Loop over our tries
+	for try := 0; try == 0 || err != nil && try < retries; try++ {
+		if try > 0 {
+			if Debug {
+				log.Printf("Retrying send %d, %s\n", try, err)
+			}
+		}
+
+		// do the work
+		if err = hs.Send(ff...); err == nil {
+			break
+		}
+
+		// hold off, handshake, and retry
+		time.Sleep(delay)
+
+		// For sanity, we should handshake to get a new transaction id
+		hs.Handshake()
 	}
 	return
 }
