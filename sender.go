@@ -146,6 +146,8 @@ func (hs *HTTPTransaction) Handshake() error {
 				log.Println("Unable to parse Max-Partition-Size", err)
 			}
 		}
+	} else {
+		hs.MaxPartitionSize = 0
 	}
 
 	hs.TransactionID, hs.Server = txid, res.Header.Get("Server")
