@@ -24,6 +24,9 @@ type HTTPTransaction struct {
 	TransactionID string
 	lastSend      time.Time
 
+	RetryCount int // When using a ReadAt reader, attempt multiple retries
+	RetryDelay time.Duration
+
 	tlsConfig  *tls.Config
 	clientPool sync.Pool
 
@@ -154,32 +157,13 @@ func (hs *HTTPTransaction) Handshake() error {
 	return nil
 }
 
-/*
-func (hs *HTTPTransaction) Send(f *File) (err error) {
-	httpWriter := hs.NewHTTPPostWriter()
-	defer func() {
-		httpWriter.Close()
-		if httpWriter.Response == nil {
-			err = fmt.Errorf("File did not send, no response")
-		} else if httpWriter.Response.StatusCode != 200 {
-			err = fmt.Errorf("File did not send successfully, code %d", httpWriter.Response.StatusCode)
-		}
-	}()
-	_, err = httpWriter.Write(f)
-	if Debug && err != nil {
-		fmt.Println("write err:", err)
-	}
-	return
-}
-*/
-
 // Send one or more flow files to the remote server and return any errors back.
 // A nil return for error is a successful send.
 //
 // This method of sending will make one POST-per-file which is not recommended
 // for small files.  To increase throughput on smaller files one should
 // consider using either NewHTTPPostWriter or NewHTTPBufferedPostWriter.
-func (hs *HTTPTransaction) Send(ff ...*File) (err error) {
+func (hs *HTTPTransaction) doSend(ff ...*File) (err error) {
 	httpWriter := hs.NewHTTPBufferedPostWriter()
 	defer func() {
 		httpWriter.Close()
@@ -206,43 +190,51 @@ func (hs *HTTPTransaction) Send(ff ...*File) (err error) {
 }
 
 // Send one or more flow files to the remote server and return any errors back.
-// A failed send will be retried (1+retries) times with a delay between retries.
 // A nil return for error is a successful send.
 //
+// A failed send will be retried if HTTPTransaction.RetryCount is set and the File
+// uses a ReadAt reader, a (1+retries) attempts will be made with a HTTPTransaction.RetryDelay between retries.
+//
 //   // With one or more files:
-//   err = hs.SendWithRetries(5, 15 * time.Second, file1, file2)
+//   err = hs.Send(file1)
+//   err = hs.Send(file1, file2) // or more
 //   // A slice of files:
-//   err = hs.SendWithRetries(5, 15 * time.Second, files...)
+//   err = hs.Send(files...)
 //
 // This method of sending will make one POST-per-file which is not recommended
 // for small files.  To increase throughput on smaller files one should
 // consider using either NewHTTPPostWriter or NewHTTPBufferedPostWriter.
-func (hs *HTTPTransaction) SendWithRetries(retries int, delay time.Duration, ff ...*File) (err error) {
-	// Verify we can send with retries, the sender must be resettable
-	for _, f := range ff {
-		if err = f.Reset(); err != nil {
-			return
-		}
+func (hs *HTTPTransaction) Send(ff ...*File) (err error) {
+	// do the work
+	if err = hs.doSend(ff...); err == nil {
+		return
 	}
 
-	// Loop over our tries
-	for try := 0; try == 0 || err != nil && try < retries; try++ {
-		if try > 0 {
-			if Debug {
-				log.Printf("Retrying send %d, %s\n", try, err)
+	if hs.RetryCount > 0 {
+		// Verify we can send with retries, the sender must be resettable
+		for _, f := range ff {
+			if err = f.Reset(); err != nil {
+				return
 			}
 		}
 
-		// do the work
-		if err = hs.Send(ff...); err == nil {
-			break
+		// Loop over our tries
+		for try := 1; err != nil && try < hs.RetryCount; try++ {
+			if Debug {
+				log.Printf("Retrying send %d, %s\n", try, err)
+			}
+
+			// do the work
+			if err = hs.doSend(ff...); err == nil {
+				break
+			}
+
+			// hold off, handshake, and retry
+			time.Sleep(hs.RetryDelay)
+
+			// For sanity, we should handshake to get a new transaction id
+			hs.Handshake()
 		}
-
-		// hold off, handshake, and retry
-		time.Sleep(delay)
-
-		// For sanity, we should handshake to get a new transaction id
-		hs.Handshake()
 	}
 	return
 }
