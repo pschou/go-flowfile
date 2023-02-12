@@ -39,23 +39,33 @@ func (attrs *Attributes) CustodyChainShift() {
 	if hn, err := os.Hostname(); err == nil {
 		updated = append(updated, Attribute{"custodyChain.0.local.hostname", hn})
 	}
-
 	*attrs = Attributes(updated)
 }
 
-func (attrs *Attributes) CustodyChainSetHTTP(listen string, r *http.Request) {
+/*
+func (attrs *Attributes) CustodyChainAddHostPort(host, port string) {
 	updated := *attrs
-	if host, port, err := net.SplitHostPort(listen); err == nil {
-		if host != "" {
-			updated = append(updated, Attribute{"custodyChain.0.local.host", host})
+	if listen != "" {
+		if addr, err := net.ResolveTCPAddr("tcp", listen); err == nil {
+			if listener, err := net.ListenTCP("tcp", addr); err == nil {
+				if host, port, err := net.SplitHostPort(listener); err == nil {
+					if host != "" {
+						updated = append(updated, Attribute{"custodyChain.0.local.host", host})
+					}
+					updated = append(updated, Attribute{"custodyChain.0.local.port", port})
+				}
+			}
 		}
-		updated = append(updated, Attribute{"custodyChain.0.local.port", port})
 	}
 
 	if r == nil {
 		return
 	}
+}
+*/
 
+func (attrs *Attributes) CustodyChainAddHTTP(r *http.Request) {
+	updated := *attrs
 	var cert *x509.Certificate
 	if r.TLS != nil {
 		if len(r.TLS.PeerCertificates) > 0 {

@@ -90,6 +90,17 @@ func (h *Attributes) Set(name, val string) *Attributes {
 	return h
 }
 
+// Return the size of the header for computations of the total flow file size.
+//   Total Size = Header + Data
+func HeaderSize(f *File) (n int) {
+	attrs := []Attribute(f.Attrs)
+	n += 17 + 4*len(attrs)
+	for _, a := range attrs {
+		n += len(a.Value) + len(a.Name)
+	}
+	return
+}
+
 // Parse the FlowFile attributes from a binary slice.
 func UnmarshalAttributes(in []byte, h *Attributes) (err error) {
 	*h = Attributes{}

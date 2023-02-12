@@ -8,6 +8,21 @@ import (
 	"github.com/pschou/go-flowfile"
 )
 
+func ExampleCustodyChainShift() {
+	var a flowfile.Attributes
+	a.Set("filename", "abcd-efgh")
+	a.Set("custodyChain.0.host", "data")
+	a.Set("custodyChain.10.time", "now")
+
+	a.CustodyChainShift()
+
+	a.Unset("custodyChain.0.time")
+	a.Unset("custodyChain.0.local.hostname")
+	fmt.Printf("attributes: %#v\n", a)
+	// Output:
+	// attributes: flowfile.Attributes{flowfile.Attribute{Name:"filename", Value:"abcd-efgh"}, flowfile.Attribute{Name:"custodyChain.1.host", Value:"data"}, flowfile.Attribute{Name:"custodyChain.11.time", Value:"now"}}
+}
+
 // This show how to set an individual attribute
 func ExampleAttributes_Set() {
 	var a flowfile.Attributes
@@ -18,6 +33,18 @@ func ExampleAttributes_Set() {
 	// Output:
 	// attributes: flowfile.Attributes(nil)
 	// attributes: flowfile.Attributes{flowfile.Attribute{Name:"path", Value:"./"}}
+}
+
+// This show how to get an individual attribute
+func ExampleAttributes_ByteLen() {
+	var a flowfile.Attributes
+	a.Set("path", "./")
+	a.Set("val", "a")
+
+	b := flowfile.MarshalAttributes(a)
+	fmt.Println("attribute len:", flowfile.HeaderSize(&flowfile.File{Attrs: a}), len(b)+8)
+	// Output:
+	// attribute len: 35 35
 }
 
 // This show how to get an individual attribute
