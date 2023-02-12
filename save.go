@@ -3,12 +3,15 @@ package flowfile // import "github.com/pschou/go-flowfile"
 import (
 	"fmt"
 	"io"
+	"log"
 	"os"
 	"path"
 	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/relvacode/iso8601"
 )
 
 // Save will save the flowfile to a given directory, reconstructing the
@@ -16,7 +19,9 @@ import (
 // as they are layed down.  It is up to the calling function to determine
 // whether to delete or keep the file after an unsuccessful send.
 func (f *File) Save(baseDir string) (outputFile string, err error) {
-	dir := filepath.Clean(f.Attrs.Get("path"))
+
+	fpath := f.Attrs.Get("path")
+	dir := filepath.Clean(fpath)
 	if strings.HasPrefix(dir, "..") {
 		err = fmt.Errorf("Invalid path %q", dir)
 		return
@@ -30,6 +35,48 @@ func (f *File) Save(baseDir string) (outputFile string, err error) {
 
 	_, filename := path.Split(f.Attrs.Get("filename"))
 	outputFile = path.Join(dir, filename)
+
+	kind := f.Attrs.Get("kind")
+
+	defer func() {
+		if err == nil && kind != "link" {
+			// Update file time from sender
+			if mt := f.Attrs.Get("file.lastModifiedTime"); mt != "" {
+				if fileTime, err := iso8601.ParseString(mt); err == nil {
+					os.Chtimes(outputFile, fileTime, fileTime)
+				}
+			}
+		}
+	}()
+
+	switch kind {
+	case "file", "":
+		err = f.saveRegular(outputFile)
+	case "dir":
+		err = os.MkdirAll(outputFile, 0755)
+	case "link":
+		if target := f.Attrs.Get("target"); target != "" && !strings.HasPrefix(target, "/") {
+			cleanedTarget := filepath.Clean(path.Join(dir, target))
+			if !strings.HasPrefix(cleanedTarget, "..") {
+				err = os.Symlink(target, outputFile)
+				if err != nil {
+					// If the creation of the symlink fails, continue
+					if Debug {
+						log.Println("Symlink creation err:", err)
+					}
+					err = nil
+				}
+			} else if Debug {
+				fmt.Println("invalid relative link", target, outputFile)
+			}
+		}
+	default:
+		err = fmt.Errorf("Unknown kind %q", kind)
+	}
+	return
+}
+
+func (f *File) saveRegular(outputFile string) (err error) {
 	var fh *os.File
 
 	if sz := f.Attrs.Get("segment.original.size"); sz == "" {
