@@ -322,7 +322,7 @@ func (hw *HTTPPostWriter) Close() (err error) {
 	}
 	err = <-hw.clientErr
 	if Debug {
-		log.Println("replied!")
+		log.Println("replied!", err, hw.Response)
 	}
 
 	hw.hs.clientPool.Put(hw.client)
