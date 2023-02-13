@@ -146,7 +146,7 @@ func New(r io.Reader, size int64) *File {
 func (l *File) Reset() error {
 	if l.Size == 0 {
 		return nil
-	} else if l.ra != nil {
+	} else if l.ra != nil || l.filePath != "" {
 		l.i, l.n = l.i+l.n-l.Size, l.Size
 		return nil
 	}
