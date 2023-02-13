@@ -166,7 +166,10 @@ func (hs *HTTPTransaction) Handshake() error {
 func (hs *HTTPTransaction) doSend(ff ...*File) (err error) {
 	httpWriter := hs.NewHTTPBufferedPostWriter()
 	defer func() {
-		httpWriter.Close()
+		closeErr := httpWriter.Close()
+		if closeErr != nil {
+			err = closeErr
+		}
 		if httpWriter.Response == nil {
 			err = fmt.Errorf("File did not send, no response")
 		} else if httpWriter.Response.StatusCode != 200 {
