@@ -237,7 +237,7 @@ func (hs *HTTPTransaction) Send(ff ...*File) (err error) {
 		// The sender must be resettable
 		for _, f := range ff {
 			if err := f.Reset(); err != nil {
-				return
+				return err
 			}
 		}
 
