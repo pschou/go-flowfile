@@ -164,9 +164,6 @@ func (hs *HTTPTransaction) Handshake() error {
 // for small files.  To increase throughput on smaller files one should
 // consider using either NewHTTPPostWriter or NewHTTPBufferedPostWriter.
 func (hs *HTTPTransaction) doSend(ff ...*File) (err error) {
-	if hs.client == nil {
-		return fmt.Errorf("Client is nil")
-	}
 	httpWriter := hs.NewHTTPBufferedPostWriter()
 	defer func() {
 		httpWriter.Close()
