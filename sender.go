@@ -167,10 +167,12 @@ func (hs *HTTPTransaction) doSend(ff ...*File) (err error) {
 	httpWriter := hs.NewHTTPBufferedPostWriter()
 	defer func() {
 		httpWriter.Close()
-		if httpWriter.Response == nil {
-			err = fmt.Errorf("File did not send, no response")
-		} else if httpWriter.Response.StatusCode != 200 {
-			err = fmt.Errorf("File did not send successfully, code %d", httpWriter.Response.StatusCode)
+		if err == nil {
+			if httpWriter.Response == nil {
+				err = fmt.Errorf("File did not send, no response")
+			} else if httpWriter.Response.StatusCode != 200 {
+				err = fmt.Errorf("File did not send successfully, code %d", httpWriter.Response.StatusCode)
+			}
 		}
 	}()
 	for i, f := range ff {
@@ -208,36 +210,34 @@ func (hs *HTTPTransaction) Send(ff ...*File) (err error) {
 	if len(ff) == 0 {
 		return
 	}
-	// do the work
-	if err = hs.doSend(ff...); err == nil {
+	// do the work, give up after first try if retry is not enabled
+	if err = hs.doSend(ff...); err == nil || hs.RetryCount <= 0 {
 		return
 	}
 
-	if hs.RetryCount > 0 {
-		// Verify we can send with retries, the sender must be resettable
-		for _, f := range ff {
-			if err = f.Reset(); err != nil {
-				return
-			}
+	// Verify we can send with retries, the sender must be resettable
+	for _, f := range ff {
+		if err = f.Reset(); err != nil {
+			return
+		}
+	}
+
+	// Loop over our tries
+	for try := 1; err != nil && try < hs.RetryCount; try++ {
+		if Debug {
+			log.Printf("Retrying send %d, %s\n", try, err)
 		}
 
-		// Loop over our tries
-		for try := 1; err != nil && try < hs.RetryCount; try++ {
-			if Debug {
-				log.Printf("Retrying send %d, %s\n", try, err)
-			}
-
-			// do the work
-			if err = hs.doSend(ff...); err == nil {
-				break
-			}
-
-			// hold off, handshake, and retry
-			time.Sleep(hs.RetryDelay)
-
-			// For sanity, we should handshake to get a new transaction id
-			hs.Handshake()
+		// do the work
+		if err = hs.doSend(ff...); err == nil {
+			break
 		}
+
+		// hold off, handshake, and retry
+		time.Sleep(hs.RetryDelay)
+
+		// For sanity, we should handshake to get a new transaction id
+		hs.Handshake()
 	}
 	return
 }
