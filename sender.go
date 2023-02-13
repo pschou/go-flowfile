@@ -26,6 +26,7 @@ type HTTPTransaction struct {
 
 	RetryCount int // When using a ReadAt reader, attempt multiple retries
 	RetryDelay time.Duration
+	OnRetry    func(retry int)
 
 	tlsConfig  *tls.Config
 	clientPool sync.Pool
@@ -216,22 +217,36 @@ func (hs *HTTPTransaction) Send(ff ...*File) (err error) {
 	if len(ff) == 0 {
 		return
 	}
+
+	// If retries are enabled, verify that the payload is resettable, error out early
+	if hs.RetryCount > 0 {
+		for _, f := range ff {
+			if err = f.Reset(); err != nil {
+				return
+			}
+		}
+	}
+
 	// do the work, give up after first try if retry is not enabled
 	if err = hs.doSend(ff...); err == nil || hs.RetryCount <= 0 {
 		return
 	}
 
-	// Verify we can send with retries, the sender must be resettable
-	for _, f := range ff {
-		if err = f.Reset(); err != nil {
-			return
-		}
-	}
-
 	// Loop over our tries
 	for try := 1; try <= hs.RetryCount; try++ {
+		// The sender must be resettable
+		for _, f := range ff {
+			if err = f.Reset(); err != nil {
+				return
+			}
+		}
+
 		if Debug {
 			log.Printf("Retrying send %d, %s\n", try, err)
+		}
+
+		if hs.OnRetry != nil {
+			hs.OnRetry(try) // Call preamble function
 		}
 
 		// do the work
