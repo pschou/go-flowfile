@@ -80,9 +80,11 @@ func (attrs *Attributes) CustodyChainAddHTTP(r *http.Request) {
 	if r.RequestURI != "" {
 		updated = append(updated, Attribute{"custodyChain.0.request.uri", r.RequestURI})
 	}
-	if host, port, err := net.SplitHostPort(r.RemoteAddr); err == nil {
+	if host, _, err := net.SplitHostPort(r.RemoteAddr); err == nil {
 		updated = append(updated, Attribute{"custodyChain.0.source.host", host})
-		updated = append(updated, Attribute{"custodyChain.0.source.port", port})
+		//updated = append(updated, Attribute{"custodyChain.0.source.port", port})
+	} else {
+		updated = append(updated, Attribute{"custodyChain.0.source.host", r.RemoteAddr})
 	}
 	if r.TLS != nil {
 		updated = append(updated, Attribute{"custodyChain.0.protocol", "HTTPS"})
