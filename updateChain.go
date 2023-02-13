@@ -13,7 +13,7 @@ import (
 	"time"
 )
 
-// Update the custodyChain field to increment all the values one and add additional.
+// Update the custodyChain field to increment all the values one and add an additional time and hostname.
 func (attrs *Attributes) CustodyChainShift() {
 	var updated []Attribute
 
@@ -42,30 +42,22 @@ func (attrs *Attributes) CustodyChainShift() {
 	*attrs = Attributes(updated)
 }
 
-/*
-func (attrs *Attributes) CustodyChainAddHostPort(host, port string) {
-	updated := *attrs
+func (attrs *Attributes) CustodyChainAddListen(listen string) {
 	if listen != "" {
-		if addr, err := net.ResolveTCPAddr("tcp", listen); err == nil {
-			if listener, err := net.ListenTCP("tcp", addr); err == nil {
-				if host, port, err := net.SplitHostPort(listener); err == nil {
-					if host != "" {
-						updated = append(updated, Attribute{"custodyChain.0.local.host", host})
-					}
-					updated = append(updated, Attribute{"custodyChain.0.local.port", port})
-				}
+		if host, port, err := net.SplitHostPort(listen); err == nil {
+			updated := []Attribute(*attrs)
+			if host != "" {
+				updated = append(updated, Attribute{"custodyChain.0.local.host", host})
 			}
+			updated = append(updated, Attribute{"custodyChain.0.local.port", port})
+			*attrs = Attributes(updated)
 		}
 	}
-
-	if r == nil {
-		return
-	}
 }
-*/
 
+// Add attributes related to an http request, such as remote host, request URI, and TLS details.
 func (attrs *Attributes) CustodyChainAddHTTP(r *http.Request) {
-	updated := *attrs
+	updated := []Attribute(*attrs)
 	var cert *x509.Certificate
 	if r.TLS != nil {
 		if len(r.TLS.PeerCertificates) > 0 {
@@ -110,6 +102,7 @@ func (attrs *Attributes) CustodyChainAddHTTP(r *http.Request) {
 	*attrs = updated
 }
 
+// Encode a certificate into a string for adding to attributes
 func certPKIXString(name pkix.Name, sep string) (out string) {
 	for i := len(name.Names) - 1; i >= 0; i-- {
 		//fmt.Println(name.Names[i])
