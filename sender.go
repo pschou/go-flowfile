@@ -53,16 +53,16 @@ func NewHTTPTransaction(url string, cfg *tls.Config) (*HTTPTransaction, error) {
 	hs.clientPool = sync.Pool{
 		New: func() any {
 			return &http.Client{
-				Timeout: 30 * time.Second,
+				//Timeout: 30 * time.Second,
 				Transport: &http.Transport{
 					Proxy: http.ProxyFromEnvironment,
 					DialContext: (&net.Dialer{
 						Timeout:   30 * time.Second,
 						KeepAlive: 30 * time.Second,
 					}).DialContext,
-					ForceAttemptHTTP2:     true,
-					MaxIdleConns:          100,
-					IdleConnTimeout:       90 * time.Second,
+					ForceAttemptHTTP2: true,
+					MaxIdleConns:      100,
+					//IdleConnTimeout:       90 * time.Second,
 					TLSHandshakeTimeout:   10 * time.Second,
 					ExpectContinueTimeout: 1 * time.Second,
 					TLSClientConfig:       tlsConfig,
