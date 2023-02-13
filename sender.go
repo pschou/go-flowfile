@@ -235,7 +235,13 @@ func (hs *HTTPTransaction) Send(ff ...*File) (err error) {
 		}
 
 		// do the work
-		if err = hs.doSend(ff...); err == nil {
+		err = hs.doSend(ff...)
+
+		if Debug {
+			log.Println("Send came back with,", err)
+		}
+
+		if err == nil {
 			break
 		}
 
@@ -245,6 +251,7 @@ func (hs *HTTPTransaction) Send(ff ...*File) (err error) {
 		// For sanity, we should handshake to get a new transaction id
 		hs.Handshake()
 	}
+
 	return
 }
 
