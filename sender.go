@@ -164,6 +164,9 @@ func (hs *HTTPTransaction) Handshake() error {
 // for small files.  To increase throughput on smaller files one should
 // consider using either NewHTTPPostWriter or NewHTTPBufferedPostWriter.
 func (hs *HTTPTransaction) doSend(ff ...*File) (err error) {
+	if hs.client == nil {
+		return fmt.Errorf("Client is nil")
+	}
 	httpWriter := hs.NewHTTPBufferedPostWriter()
 	defer func() {
 		httpWriter.Close()
@@ -320,9 +323,9 @@ func (hw *HTTPPostWriter) Close() (err error) {
 		log.Println("closed channel, waiting for post reply")
 	}
 	err = <-hw.clientErr
-	//if Debug {
-	//	log.Println("repied!")
-	//}
+	if Debug {
+		log.Println("replied!")
+	}
 
 	hw.hs.clientPool.Put(hw.client)
 	hw.client = nil
@@ -336,7 +339,7 @@ func (hw *HTTPPostWriter) Terminate() {
 
 // NewHTTPPostWriter creates a POST to a NiFi listening endpoint and allows
 // multiple files to be written to the endpoint at one time.  This reduces
-// additional overhead (with fewer HTTP reponses) and decreases latency (by
+// additional overhead (with fewer HTTP responses) and decreases latency (by
 // instead putting pressure on TCP with smaller payload sizes).
 //
 // However, HTTPPostWriter increases the chances of failures as all the sent
@@ -366,7 +369,7 @@ func (hs *HTTPTransaction) NewHTTPPostWriter() (httpWriter *HTTPPostWriter) {
 
 // NewHTTPBufferedPostWriter creates a POST to a NiFi listening endpoint and
 // allows multiple files to be written to the endpoint at one time.  This
-// reduces additional overhead (with fewer HTTP reponses) and decreases
+// reduces additional overhead (with fewer HTTP responses) and decreases
 // latency.  Additionally, the added buffering helps with constructing larger
 // packets, thus further reducing TCP overhead.
 //
@@ -431,6 +434,6 @@ func (httpWriter *HTTPPostWriter) doPost(hs *HTTPTransaction, r io.ReadCloser) {
 	//}
 	httpWriter.Response, err = httpWriter.client.Do(req)
 	if Debug {
-		log.Println("POST reponse:", httpWriter.Response, err)
+		log.Println("POST response:", httpWriter.Response, err)
 	}
 }
