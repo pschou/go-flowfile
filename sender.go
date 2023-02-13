@@ -229,7 +229,7 @@ func (hs *HTTPTransaction) Send(ff ...*File) (err error) {
 	}
 
 	// Loop over our tries
-	for try := 1; err != nil && try < hs.RetryCount; try++ {
+	for try := 1; try <= hs.RetryCount; try++ {
 		if Debug {
 			log.Printf("Retrying send %d, %s\n", try, err)
 		}
