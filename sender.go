@@ -236,13 +236,13 @@ func (hs *HTTPTransaction) Send(ff ...*File) (err error) {
 	for try := 1; try <= hs.RetryCount; try++ {
 		// The sender must be resettable
 		for _, f := range ff {
-			if err := f.Reset(); err != nil {
-				return err
+			if resetErr := f.Reset(); resetErr != nil {
+				return resetErr
 			}
 		}
 
 		if Debug {
-			log.Println("Retrying send,", try, err)
+			log.Println("Retrying send,", try, "err:", err)
 		}
 
 		if hs.OnRetry != nil {
