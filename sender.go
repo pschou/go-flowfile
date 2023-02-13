@@ -165,16 +165,9 @@ func (hs *HTTPTransaction) Handshake() error {
 // consider using either NewHTTPPostWriter or NewHTTPBufferedPostWriter.
 func (hs *HTTPTransaction) doSend(ff ...*File) (err error) {
 	httpWriter := hs.NewHTTPBufferedPostWriter()
+	err = fmt.Errorf("File did not send, no response")
 	defer func() {
-		closeErr := httpWriter.Close()
-		if closeErr != nil {
-			err = closeErr
-		}
-		if httpWriter.Response == nil {
-			err = fmt.Errorf("File did not send, no response")
-		} else if httpWriter.Response.StatusCode != 200 {
-			err = fmt.Errorf("File did not send successfully, code %d", httpWriter.Response.StatusCode)
-		}
+		httpWriter.Close() // make sure everything is closed up
 	}()
 	for i, f := range ff {
 		if Debug {
@@ -188,6 +181,15 @@ func (hs *HTTPTransaction) doSend(ff ...*File) (err error) {
 			httpWriter.Terminate()
 			return
 		}
+	}
+	err = httpWriter.Close()
+	if err != nil {
+		return
+	}
+	if httpWriter.Response == nil {
+		err = fmt.Errorf("File did not send, no response")
+	} else if httpWriter.Response.StatusCode != 200 {
+		err = fmt.Errorf("File did not send successfully, code %d", httpWriter.Response.StatusCode)
 	}
 	return
 }
