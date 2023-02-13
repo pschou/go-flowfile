@@ -67,7 +67,7 @@ func Marshal(f *File) (dat []byte, err error) {
 
 // FromReader reads a FlowFile from an io.Reader, parses the attributes
 // and returns a File struct for processing.
-func ParseFlow(in io.Reader) (f *File, err error) {
+func ParseOne(in io.Reader) (f *File, err error) {
 	var a Attributes
 	if err = a.ReadFrom(in); err != nil {
 		return
@@ -98,7 +98,7 @@ func ParseFlow(in io.Reader) (f *File, err error) {
 // Note: This is not preferred as it can cause memory bloat.
 func Unmarshal(dat []byte, f *File) (err error) {
 	var ff *File
-	ff, err = ParseFlow(bytes.NewReader(dat))
+	ff, err = ParseOne(bytes.NewReader(dat))
 	if ff != nil {
 		*f = *ff
 	}

@@ -80,7 +80,7 @@ func (r *Scanner) Scan() bool {
 	}
 
 	// Read a File from the reader
-	r.last, r.err = ParseFlow(r.r)
+	r.last, r.err = ParseOne(r.r)
 	if r.last != nil {
 		r.last.cksumInit()
 	}
