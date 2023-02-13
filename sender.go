@@ -26,7 +26,7 @@ type HTTPTransaction struct {
 
 	RetryCount int // When using a ReadAt reader, attempt multiple retries
 	RetryDelay time.Duration
-	OnRetry    func(retry int)
+	OnRetry    func(ff []*File, retry int)
 
 	tlsConfig  *tls.Config
 	clientPool sync.Pool
@@ -246,7 +246,7 @@ func (hs *HTTPTransaction) Send(ff ...*File) (err error) {
 		}
 
 		if hs.OnRetry != nil {
-			hs.OnRetry(try) // Call preamble function
+			hs.OnRetry(ff, try) // Call preamble function
 		}
 
 		// do the work
