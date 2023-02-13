@@ -150,6 +150,9 @@ func (l *File) Reset() error {
 		l.i, l.n = l.i+l.n-l.Size, l.Size
 		return nil
 	}
+	if Debug {
+		fmt.Println("Reset called on %#v\n")
+	}
 	return fmt.Errorf("Unable to Reset a non-ReadAt reader")
 }
 
