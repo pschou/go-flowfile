@@ -167,6 +167,9 @@ func (hs *HTTPTransaction) doSend(ff ...*File) (err error) {
 	httpWriter := hs.NewHTTPBufferedPostWriter()
 	err = fmt.Errorf("File did not send, no response")
 	defer func() {
+		if httpWriter.w == nil {
+			return
+		}
 		httpWriter.Close() // make sure everything is closed up
 	}()
 	for i, f := range ff {
@@ -273,6 +276,7 @@ type HTTPPostWriter struct {
 	client    *http.Client
 	clientErr chan error
 	Response  *http.Response
+	err       error
 
 	writeLock sync.Mutex
 	init      func()
@@ -314,6 +318,10 @@ func (hw *HTTPPostWriter) Write(f *File) (n int64, err error) {
 
 // Close the HTTPPostWriter and flush the data to the stream
 func (hw *HTTPPostWriter) Close() (err error) {
+	if hw.err != nil {
+		return hw.err
+	}
+
 	hw.writeLock.Lock()
 	defer hw.writeLock.Unlock()
 	hw.w.Close()
@@ -322,14 +330,14 @@ func (hw *HTTPPostWriter) Close() (err error) {
 	if Debug {
 		log.Println("closed channel, waiting for post reply")
 	}
-	err = <-hw.clientErr
+	hw.err = <-hw.clientErr
 	if Debug {
-		log.Println("replied!", err, hw.Response)
+		log.Println("replied!", hw.err, hw.Response)
 	}
 
 	hw.hs.clientPool.Put(hw.client)
 	hw.client = nil
-	return err
+	return hw.err
 }
 
 // Terminate the HTTPPostWriter
