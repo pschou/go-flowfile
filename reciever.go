@@ -16,6 +16,9 @@ type HTTPReceiver struct {
 	Server           string
 	MaxPartitionSize int64
 
+	connections    int
+	MaxConnections int
+
 	handler func(*Scanner, http.ResponseWriter, *http.Request)
 	//BytesSeen        uint64
 }
@@ -54,10 +57,23 @@ func NewHTTPFileReceiver(handler func(*File, http.ResponseWriter, *http.Request)
 //  log.Fatal(http.ListenAndServe(":8080", nil))
 //
 func (f HTTPReceiver) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	// What to do if the creation was not done correctly
 	if f.handler == nil {
 		w.WriteHeader(http.StatusNotImplemented)
 		return
 	}
+
+	// What to do if we are busy!
+	f.connections++
+	defer func() { f.connections-- }()
+	if f.MaxConnections > 0 && f.connections >= f.MaxConnections {
+		if Debug {
+			log.Println("Denying connection as MaxConnections has been met")
+		}
+		http.Error(w, "503 too busy", http.StatusServiceUnavailable)
+		return
+	}
+
 	hdr := w.Header()
 	switch r.Method {
 	case "HEAD":
