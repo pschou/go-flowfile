@@ -92,6 +92,7 @@ import (
 	"hash"
 	"io"
 	"io/ioutil"
+	"log"
 	"os"
 )
 
@@ -179,7 +180,11 @@ func (l *File) Read(p []byte) (n int, err error) {
 	l.n -= int64(n)
 	l.i += int64(n)
 	if l.cksumStatus == cksumInit {
-		l.cksum.Write(p[:n])
+		var n2 int
+		n2, err = l.cksum.Write(p[:n])
+		if err != nil || n != n2 {
+			log.Println("checksum write error", err)
+		}
 	}
 	if err == nil && l.n <= 0 {
 		err = io.EOF
