@@ -57,8 +57,10 @@ func (l *File) Verify() error {
 func (l *File) VerifyDetails() string {
 	switch l.cksumStatus {
 	case cksumPassed:
+		hashval := l.cksum.Sum(nil)
 		return fmt.Sprintf("Checksum values matched %q = %q", fmt.Sprintf("%0x", hashval), l.Attrs.Get("checksum"))
-	case ErrorChecksumMismatch:
+	case cksumFailed:
+		hashval := l.cksum.Sum(nil)
 		return fmt.Sprintf("Checksum values differ %q != %q", fmt.Sprintf("%0x", hashval), l.Attrs.Get("checksum"))
 	}
 	return fmt.Sprintf("No details available for checksum result")
