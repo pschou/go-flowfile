@@ -360,7 +360,8 @@ func (hw *HTTPPostWriter) Write(f *File) (n int64, err error) {
 	if f.Size > 0 && f.Attrs.Get("checksumType") == "" {
 		f.AddChecksum(hw.hs.CheckSumType)
 	}
-	n, err = writeTo(hw.w, f, 0)
+	w := &Writer{w: hw.w}
+	n, err = w.Write(f)
 	hw.Sent += n
 	return
 }

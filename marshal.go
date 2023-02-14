@@ -18,15 +18,6 @@ func NewWriter(w io.Writer) *Writer {
 
 // Encode a flowfile into an io.Writer
 func (e *Writer) Write(f *File) (n int64, err error) {
-	return writeTo(e.w, f, 0)
-}
-
-// Encode a flowfile into an io.Writer with a maximum chunk write size, max
-func (e *Writer) WriteN(f *File, max int64) (n int64, err error) {
-	return writeTo(e.w, f, max)
-}
-
-func writeTo(out io.Writer, f *File, max int64) (n int64, err error) {
 	header := bytes.NewBuffer([]byte{})
 	if err = f.Attrs.WriteTo(header); err != nil {
 		if Debug {
@@ -42,11 +33,8 @@ func writeTo(out io.Writer, f *File, max int64) (n int64, err error) {
 		return
 	}
 
-	if max == 0 {
-		n, err = io.Copy(out, io.MultiReader(header, f))
-	} else {
-		n, err = io.CopyN(out, io.MultiReader(header, f), max)
-	}
+	n, err = io.Copy(e.w, io.MultiReader(header, f))
+
 	if Debug && err != nil {
 		log.Println("Failed to send contents", err)
 	}
