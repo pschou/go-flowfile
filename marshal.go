@@ -17,28 +17,19 @@ func NewWriter(w io.Writer) *Writer {
 }
 
 // Encode a flowfile into an io.Writer
-func (e *Writer) Write(f *File) (n int64, err error) {
+func (f *File) EncodedReader() (rdr io.Reader) {
 	header := bytes.NewBuffer([]byte{})
-	if err = f.Attrs.WriteTo(header); err != nil {
-		if Debug {
-			log.Println("Failed to send size header", err)
-		}
-		return
-	}
+	f.Attrs.WriteTo(header)
+	binary.Write(header, binary.BigEndian, uint64(f.Size))
+	return io.MultiReader(header, f)
+}
 
-	if err = binary.Write(header, binary.BigEndian, uint64(f.Size)); err != nil {
-		if Debug {
-			log.Println("Failed to send size header", err)
-		}
-		return
-	}
-
-	n, err = io.Copy(e.w, io.MultiReader(header, f))
-
+// Encode a flowfile into an io.Writer
+func (e *Writer) Write(f *File) (n int64, err error) {
+	n, err = io.Copy(e.w, f.EncodedReader())
 	if Debug && err != nil {
 		log.Println("Failed to send contents", err)
 	}
-
 	return
 }
 
@@ -53,9 +44,9 @@ func Marshal(f *File) (dat []byte, err error) {
 	return
 }
 
-// FromReader reads a FlowFile from an io.Reader, parses the attributes
+// parseOne reads a FlowFile from an io.Reader, parses the attributes
 // and returns a File struct for processing.
-func ParseOne(in io.Reader) (f *File, err error) {
+func parseOne(in io.Reader) (f *File, err error) {
 	var a Attributes
 	if err = a.ReadFrom(in); err != nil {
 		return
@@ -86,7 +77,7 @@ func ParseOne(in io.Reader) (f *File, err error) {
 // Note: This is not preferred as it can cause memory bloat.
 func Unmarshal(dat []byte, f *File) (err error) {
 	var ff *File
-	ff, err = ParseOne(bytes.NewReader(dat))
+	ff, err = parseOne(bytes.NewReader(dat))
 	if ff != nil {
 		*f = *ff
 	}

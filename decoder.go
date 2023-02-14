@@ -78,7 +78,7 @@ func (r *Scanner) Scan() bool {
 	}
 
 	// Read a File from the reader
-	r.last, r.err = ParseOne(r.r)
+	r.last, r.err = parseOne(r.r)
 	return r.last != nil
 }
 
