@@ -30,6 +30,9 @@ var (
 
 // Verify the file sent was complete and accurate
 func (l *File) Verify() error {
+	if Debug {
+		log.Println("Verify called, with checksum status =", l.cksumStatus)
+	}
 	if l.Size == 0 && l.n == 0 {
 		return nil
 	}
