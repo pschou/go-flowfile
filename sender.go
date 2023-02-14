@@ -26,7 +26,7 @@ type HTTPTransaction struct {
 
 	RetryCount int // When using a ReadAt reader, attempt multiple retries
 	RetryDelay time.Duration
-	OnRetry    func(ff []*File, retry int)
+	OnRetry    func(ff []*File, retry int, err error)
 
 	tlsConfig  *tls.Config
 	clientPool sync.Pool
@@ -82,10 +82,10 @@ func NewHTTPTransaction(url string, cfg *tls.Config) (*HTTPTransaction, error) {
 			return &http.Client{
 				//Timeout: 30 * time.Second,
 				Transport: &http.Transport{
-					Proxy: http.ProxyFromEnvironment,
+					Proxy:       http.ProxyFromEnvironment,
 					DialContext: (&net.Dialer{
 						//Timeout:   30 * time.Second,
-						KeepAlive: 30 * time.Second,
+						//KeepAlive: 30 * time.Second,
 					}).DialContext,
 					ForceAttemptHTTP2: true,
 					MaxIdleConns:      100,
@@ -276,7 +276,7 @@ func (hs *HTTPTransaction) Send(ff ...*File) (err error) {
 		}
 
 		if hs.OnRetry != nil {
-			hs.OnRetry(ff, try) // Call preamble function
+			hs.OnRetry(ff, try, err) // Call preamble function
 		}
 
 		// do the work
