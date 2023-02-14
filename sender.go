@@ -261,7 +261,10 @@ func (hs *HTTPTransaction) Send(ff ...*File) (err error) {
 
 	// Loop over our tries
 	for try := 1; try <= hs.RetryCount; try++ {
-		// The sender must be resettable
+		// For sanity, we should handshake to get a new transaction id
+		hs.Handshake()
+
+		// Reset all the readers
 		for _, f := range ff {
 			if resetErr := f.Reset(); resetErr != nil {
 				return resetErr
@@ -289,9 +292,6 @@ func (hs *HTTPTransaction) Send(ff ...*File) (err error) {
 
 		// hold off, handshake, and retry
 		time.Sleep(hs.RetryDelay)
-
-		// For sanity, we should handshake to get a new transaction id
-		hs.Handshake()
 	}
 
 	return
