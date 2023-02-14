@@ -30,7 +30,7 @@ var (
 
 // Verify the file sent was complete and accurate
 func (l *File) Verify() error {
-	if l.Size == 0 {
+	if l.Size == 0 && l.n == 0 {
 		return nil
 	}
 	switch l.cksumStatus {
@@ -95,6 +95,9 @@ func (l *File) VerifyParent(fp string) error {
 
 // Internal function called before a file is read for setting up the hashing function.
 func (l *File) cksumInit() {
+	if Debug {
+		log.Println("Checksum init for", l.Attrs.Get("filename"))
+	}
 	if l.Size != 0 {
 		if ct := l.Attrs.Get("checksumType"); ct != "" {
 			new := getChecksumFunc(ct)
