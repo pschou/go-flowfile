@@ -53,6 +53,17 @@ func (l *File) Verify() error {
 	return ErrorChecksumMissing
 }
 
+// VerifyDetails describes why a match was successful or failed
+func (l *File) VerifyDetails() string {
+	switch l.cksumStatus {
+	case cksumPassed:
+		return fmt.Sprintf("Checksum values matched %q = %q", fmt.Sprintf("%0x", hashval), l.Attrs.Get("checksum"))
+	case ErrorChecksumMismatch:
+		return fmt.Sprintf("Checksum values differ %q != %q", fmt.Sprintf("%0x", hashval), l.Attrs.Get("checksum"))
+	}
+	return fmt.Sprintf("No details available for checksum result")
+}
+
 // Verify the file sent was complete and accurate
 func (l *File) VerifyParent(fp string) error {
 	if ct := l.Attrs.Get("segment.original.checksumType"); ct != "" {
