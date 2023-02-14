@@ -94,7 +94,6 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
-	"time"
 )
 
 var (
@@ -176,9 +175,7 @@ func (l *File) Read(p []byte) (n int, err error) {
 	if l.ra != nil {
 		n, err = l.ra.ReadAt(p, l.i)
 	} else {
-		for j := 0; n == 0 && err == nil && j < 3; func() { j = j + 1; time.Sleep(time.Second / 3) }() {
-			n, err = l.r.Read(p)
-		}
+		n, err = l.r.Read(p)
 	}
 	l.n -= int64(n)
 	l.i += int64(n)
