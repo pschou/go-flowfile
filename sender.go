@@ -39,6 +39,33 @@ type HTTPTransaction struct {
 }
 
 // Create the HTTP sender and verify that the remote side is listening.
+func NewHTTPTransactionWithTransport(url string, cfg *http.Transport) (*HTTPTransaction, error) {
+	var transportConfig *http.Transport
+	if cfg != nil {
+		transportConfig = cfg.Clone() // Create a copy for immutability
+	}
+
+	hs := &HTTPTransaction{
+		url:          url,
+		tlsConfig:    transportConfig.TLSClientConfig,
+		CheckSumType: "SHA256",
+	}
+	hs.clientPool = sync.Pool{
+		New: func() any {
+			return &http.Client{
+				//Timeout: 30 * time.Second,
+				Transport: transportConfig.Clone(),
+			}
+		}}
+
+	err := hs.Handshake()
+	if err != nil {
+		return nil, err
+	}
+	return hs, nil
+}
+
+// Create the HTTP sender and verify that the remote side is listening.
 func NewHTTPTransaction(url string, cfg *tls.Config) (*HTTPTransaction, error) {
 	var tlsConfig *tls.Config
 	if cfg != nil {
@@ -57,7 +84,7 @@ func NewHTTPTransaction(url string, cfg *tls.Config) (*HTTPTransaction, error) {
 				Transport: &http.Transport{
 					Proxy: http.ProxyFromEnvironment,
 					DialContext: (&net.Dialer{
-						Timeout:   30 * time.Second,
+						//Timeout:   30 * time.Second,
 						KeepAlive: 30 * time.Second,
 					}).DialContext,
 					ForceAttemptHTTP2: true,
