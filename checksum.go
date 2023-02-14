@@ -58,10 +58,10 @@ func (l *File) VerifyDetails() string {
 	switch l.cksumStatus {
 	case cksumPassed:
 		hashval := l.cksum.Sum(nil)
-		return fmt.Sprintf("Checksum values matched %q = %q (%d bytes)", fmt.Sprintf("%0x", hashval), l.Attrs.Get("checksum"), l.n)
+		return fmt.Sprintf("Checksum values matched %q = %q (%d of %d bytes)", fmt.Sprintf("%0x", hashval), l.Attrs.Get("checksum"), l.n, l.Size)
 	case cksumFailed:
 		hashval := l.cksum.Sum(nil)
-		return fmt.Sprintf("Checksum values differ %q != %q (%d bytes)", fmt.Sprintf("%0x", hashval), l.Attrs.Get("checksum"), l.n)
+		return fmt.Sprintf("Checksum values differ %q != %q (%d of %d bytes)", fmt.Sprintf("%0x", hashval), l.Attrs.Get("checksum"), l.n, l.Size)
 	}
 	return fmt.Sprintf("No details available for checksum result")
 }
