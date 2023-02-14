@@ -145,7 +145,6 @@ func (f *File) AddChecksum(cksum string) error {
 	if ra != nil {
 		// We have a ReadAt reader, do the checksum!
 		bufp := bufPool.Get().(*[]byte)
-		bufp.Reset()
 		defer bufPool.Put(bufp)
 		buf := *bufp
 		h := new()
