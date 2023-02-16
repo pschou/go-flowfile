@@ -85,7 +85,7 @@ func (m metrics) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func (f HTTPReceiver) Metrics() string {
-	var w *strings.Builder
+	w := &strings.Builder{}
 	tm := time.Now().UnixMilli()
 	var bk string
 	for i, v := range f.MetricsFlowFileTransferredBucketValues {
