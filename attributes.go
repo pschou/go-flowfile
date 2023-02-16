@@ -120,7 +120,9 @@ func (h *Attributes) ReadFrom(in io.Reader) (err error) {
 			}
 			return fmt.Errorf("Error reading NiFiFF3 header: %s", err)
 		}
-		if string(hdr) != "NiFiFF3" {
+		if string(hdr) == "NiFiEOF" {
+			return io.EOF
+		} else if string(hdr) != "NiFiFF3" {
 			return fmt.Errorf("No NiFiFF3 header found")
 		}
 	}
