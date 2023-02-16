@@ -109,7 +109,7 @@ func (f HTTPReceiver) Metrics() string {
 	return w.String()
 }
 
-func (f HTTPReceiver) bucketCounter(size int64) {
+func (f *HTTPReceiver) bucketCounter(size int64) {
 	idx := 0
 	for ; idx < len(f.MetricsFlowFileTransferredBuckets) &&
 		size <= f.MetricsFlowFileTransferredBuckets[idx]; idx++ {
