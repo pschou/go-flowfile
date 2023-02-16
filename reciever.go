@@ -81,26 +81,32 @@ type metrics struct {
 
 func (m metrics) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
+	w.Write([]byte(m.hr.Metrics()))
+}
+
+func (f HTTPReceiver) Metrics() string {
+	var w *strings.Builder
 	tm := time.Now().UnixMilli()
 	var bk string
-	for i, v := range m.hr.MetricsFlowFileTransferredBucketValues {
-		if i < len(m.hr.MetricsFlowFileTransferredBuckets) {
-			bk = fmt.Sprintf("%d", m.hr.MetricsFlowFileTransferredBuckets[i])
+	for i, v := range f.MetricsFlowFileTransferredBucketValues {
+		if i < len(f.MetricsFlowFileTransferredBuckets) {
+			bk = fmt.Sprintf("%d", f.MetricsFlowFileTransferredBuckets[i])
 		} else {
 			bk = "+Inf"
 		}
 		fmt.Fprintf(w, "flowfiles_transfered_bytes_bucket{le=%q} %d %d\n", bk, v, tm)
 	}
 	fmt.Fprintf(w, "flowfiles_transfered_bytes_sum %d %d\n",
-		*m.hr.MetricsFlowFileTransferredSum, tm)
+		*f.MetricsFlowFileTransferredSum, tm)
 	fmt.Fprintf(w, "flowfiles_transfered_bytes_count %d %d\n",
-		*m.hr.MetricsFlowFileTransferredCount, tm)
+		*f.MetricsFlowFileTransferredCount, tm)
 	fmt.Fprintf(w, "flowfiles_threads_active %d %d\n",
-		*m.hr.MetricsThreadsActive, tm)
+		*f.MetricsThreadsActive, tm)
 	fmt.Fprintf(w, "flowfiles_threads_terminated %d %d\n",
-		*m.hr.MetricsThreadsTerminated, tm)
+		*f.MetricsThreadsTerminated, tm)
 	fmt.Fprintf(w, "flowfiles_threads_queued %d %d\n",
-		*m.hr.MetricsThreadsQueued, tm)
+		*f.MetricsThreadsQueued, tm)
+	return w.String()
 }
 
 func (f HTTPReceiver) bucketCounter(size int64) {
