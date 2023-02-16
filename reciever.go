@@ -26,14 +26,14 @@ type HTTPReceiver struct {
 	// Note the BucketValues is always N+1 sized, as the last is overflow
 	MetricsFlowFileTransferredBuckets      []int64
 	MetricsFlowFileTransferredBucketValues []int64
-	MetricsFlowFileTransferredSum          *int64
-	MetricsFlowFileTransferredCount        *int64
+	MetricsFlowFileTransferredSum          int64
+	MetricsFlowFileTransferredCount        int64
 
 	//MetricsFlowFileReceivedSum   *int64
 	//MetricsFlowFileReceivedCount *int64
-	MetricsThreadsActive     *int64
-	MetricsThreadsTerminated *int64
-	MetricsThreadsQueued     *int64
+	MetricsThreadsActive     int64
+	MetricsThreadsTerminated int64
+	MetricsThreadsQueued     int64
 
 	handler func(*Scanner, http.ResponseWriter, *http.Request)
 }
@@ -97,15 +97,15 @@ func (f HTTPReceiver) Metrics() string {
 		fmt.Fprintf(w, "flowfiles_transfered_bytes_bucket{le=%q} %d %d\n", bk, v, tm)
 	}
 	fmt.Fprintf(w, "flowfiles_transfered_bytes_sum %d %d\n",
-		*f.MetricsFlowFileTransferredSum, tm)
+		f.MetricsFlowFileTransferredSum, tm)
 	fmt.Fprintf(w, "flowfiles_transfered_bytes_count %d %d\n",
-		*f.MetricsFlowFileTransferredCount, tm)
+		f.MetricsFlowFileTransferredCount, tm)
 	fmt.Fprintf(w, "flowfiles_threads_active %d %d\n",
-		*f.MetricsThreadsActive, tm)
+		f.MetricsThreadsActive, tm)
 	fmt.Fprintf(w, "flowfiles_threads_terminated %d %d\n",
-		*f.MetricsThreadsTerminated, tm)
+		f.MetricsThreadsTerminated, tm)
 	fmt.Fprintf(w, "flowfiles_threads_queued %d %d\n",
-		*f.MetricsThreadsQueued, tm)
+		f.MetricsThreadsQueued, tm)
 	return w.String()
 }
 
@@ -115,8 +115,8 @@ func (f HTTPReceiver) bucketCounter(size int64) {
 		size <= f.MetricsFlowFileTransferredBuckets[idx]; idx++ {
 	}
 	atomic.AddInt64(&f.MetricsFlowFileTransferredBucketValues[idx], 1)
-	atomic.AddInt64(f.MetricsFlowFileTransferredSum, size)
-	atomic.AddInt64(f.MetricsFlowFileTransferredCount, 1)
+	atomic.AddInt64(&f.MetricsFlowFileTransferredSum, size)
+	atomic.AddInt64(&f.MetricsFlowFileTransferredCount, 1)
 }
 
 // Handle for accepting flow files through a http webserver.  The handle here
@@ -134,22 +134,22 @@ func (f *HTTPReceiver) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	atomic.AddInt64(f.MetricsThreadsQueued, 1)
+	atomic.AddInt64(&f.MetricsThreadsQueued, 1)
 	var once sync.Once
 	var active bool
 	doOnce := func() {
-		atomic.AddInt64(f.MetricsThreadsQueued, -1)
-		atomic.AddInt64(f.MetricsThreadsActive, 1)
+		atomic.AddInt64(&f.MetricsThreadsQueued, -1)
+		atomic.AddInt64(&f.MetricsThreadsActive, 1)
 		active = true
 	}
 	defer func() {
 		once.Do(doOnce)
 		if active {
-			atomic.AddInt64(f.MetricsThreadsActive, -1)
+			atomic.AddInt64(&f.MetricsThreadsActive, -1)
 		} else {
-			atomic.AddInt64(f.MetricsThreadsQueued, -1)
+			atomic.AddInt64(&f.MetricsThreadsQueued, -1)
 		}
-		atomic.AddInt64(f.MetricsThreadsTerminated, 1)
+		atomic.AddInt64(&f.MetricsThreadsTerminated, 1)
 	}()
 
 	// What to do if we are busy!
