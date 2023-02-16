@@ -35,6 +35,8 @@ type HTTPTransaction struct {
 	MaxPartitionSize int64  // Maximum partition size for partitioned file
 	CheckSumType     string // What kind of CheckSum to use for sent files
 
+	MetricsHandshakeLatency time.Duration
+
 	hold *bool
 }
 
@@ -125,10 +127,12 @@ func (hs *HTTPTransaction) Handshake() error {
 	req.Header.Set("x-nifi-transaction-id", txid)
 	req.Header.Set("Connection", "Keep-alive")
 	req.Header.Set("User-Agent", UserAgent)
+	tick := time.Now()
 	res, err := client.Do(req)
 	if err != nil {
 		return err
 	}
+	hs.MetricsHandshakeLatency = time.Now().Sub(tick)
 
 	if Debug {
 		log.Printf("Result on query: %#v\n", res)

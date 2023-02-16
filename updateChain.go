@@ -35,7 +35,7 @@ func (attrs *Attributes) CustodyChainShift() {
 	}
 
 	// Set the current chain link
-	updated = append(updated, Attribute{"custodyChain.0.time", time.Now().Format(time.RFC3339)})
+	updated = append(updated, Attribute{"custodyChain.0.time", time.Now().Format(time.RFC3339Nano)})
 	if hn, err := os.Hostname(); err == nil {
 		updated = append(updated, Attribute{"custodyChain.0.local.hostname", hn})
 	}

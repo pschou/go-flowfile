@@ -9,6 +9,7 @@ type Scanner struct {
 	r         io.Reader
 	err       error
 	last, one *File
+	every     func(*File)
 }
 
 // Create a new FlowFile reader, wrapping io.Reader for reading consecutive
@@ -54,6 +55,9 @@ func (r *Scanner) Scan() bool {
 	if r.r == nil {
 		if r.one != nil {
 			r.last, r.one = r.one, nil
+			if r.every != nil {
+				r.every(r.last)
+			}
 			return true
 		}
 		if r.last != nil {
@@ -79,6 +83,9 @@ func (r *Scanner) Scan() bool {
 
 	// Read a File from the reader
 	r.last, r.err = parseOne(r.r)
+	if r.last != nil && r.every != nil {
+		r.every(r.last)
+	}
 	return r.last != nil
 }
 
