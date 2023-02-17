@@ -110,6 +110,11 @@ func UnmarshalAttributes(in []byte, h *Attributes) (err error) {
 	return
 }
 
+const (
+	FlowFile3Header = "NiFiFF3"
+	FlowFileEOF     = "NiFiEOF"
+)
+
 // Parse the FlowFile attributes from binary Reader.
 func (h *Attributes) ReadFrom(in io.Reader) (err error) {
 	{
@@ -118,11 +123,11 @@ func (h *Attributes) ReadFrom(in io.Reader) (err error) {
 			if err == http.ErrBodyReadAfterClose || err == io.EOF {
 				return io.EOF
 			}
-			return fmt.Errorf("Error reading NiFiFF3 header: %s", err)
+			return fmt.Errorf("Error reading FlowFile header: %s", err)
 		}
-		if string(hdr) == "NiFiEOF" {
+		if string(hdr) == FlowFileEOF {
 			return io.EOF
-		} else if string(hdr) != "NiFiFF3" {
+		} else if string(hdr) != FlowFile3Header {
 			return fmt.Errorf("No NiFiFF3 header found")
 		}
 	}
