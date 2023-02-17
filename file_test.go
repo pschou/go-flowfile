@@ -35,13 +35,13 @@ func ExampleUnmarshal() {
 	if err != nil {
 		fmt.Println("Error unmarshalling:", err)
 	}
-	fmt.Printf("Attrs: %#v\n", f.Attrs)
+	fmt.Printf("Attrs: %v\n", f.Attrs)
 
 	buf := bytes.NewBuffer([]byte{})
 	buf.ReadFrom(&f)
 	fmt.Printf("content: %q\n", buf.String())
 	// Output:
-	// Attrs: flowfile.Attributes{flowfile.Attribute{Name:"path", Value:"./"}, flowfile.Attribute{Name:"filename", Value:"abcd-efgh"}}
+	// Attrs: {"path":"./","filename":"abcd-efgh"}
 	// content: "this is a custom string for flowfile"
 }
 
@@ -53,7 +53,7 @@ func ExampleNewScanner() {
 	for s.Scan() { // Scan for another FlowFile in the stream
 		f := s.File()
 
-		fmt.Printf("attributes: %#v\n", f.Attrs)
+		fmt.Printf("attributes: %v\n", f.Attrs)
 
 		buf := bytes.NewBuffer([]byte{})
 		buf.ReadFrom(f)
@@ -62,7 +62,7 @@ func ExampleNewScanner() {
 	fmt.Println("Check for errors:", s.Err())
 
 	// Output:
-	// attributes: flowfile.Attributes{flowfile.Attribute{Name:"path", Value:"./"}, flowfile.Attribute{Name:"filename", Value:"abcd-efgh"}}
+	// attributes: {"path":"./","filename":"abcd-efgh"}
 	// content: "this is a custom string for flowfile"
 	// Check for errors: <nil>
 }

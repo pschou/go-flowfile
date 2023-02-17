@@ -13,26 +13,33 @@ func ExampleCustodyChainShift() {
 	a.Set("filename", "abcd-efgh")
 	a.Set("custodyChain.0.host", "data")
 	a.Set("custodyChain.10.time", "now")
+	a.Set("custodyChain.6.time", "now")
 
 	a.CustodyChainShift()
+	a.Sort()
 
 	a.Unset("custodyChain.0.time")
 	a.Unset("custodyChain.0.local.hostname")
-	fmt.Printf("attributes: %#v\n", a)
+	fmt.Printf("attributes: %s\n", a.IntentedString())
 	// Output:
-	// attributes: flowfile.Attributes{flowfile.Attribute{Name:"filename", Value:"abcd-efgh"}, flowfile.Attribute{Name:"custodyChain.1.host", Value:"data"}, flowfile.Attribute{Name:"custodyChain.11.time", Value:"now"}}
+	// attributes: {
+	//   "custodyChain.1.host":"data",
+	//   "custodyChain.7.time":"now",
+	//   "custodyChain.11.time":"now",
+	//   "filename":"abcd-efgh"
+	// }
 }
 
 // This show how to set an individual attribute
 func ExampleAttributes_Set() {
 	var a flowfile.Attributes
-	fmt.Printf("attributes: %#v\n", a)
+	fmt.Printf("attributes: %v\n", a)
 
 	a.Set("path", "./")
-	fmt.Printf("attributes: %#v\n", a)
+	fmt.Printf("attributes: %v\n", a)
 	// Output:
-	// attributes: flowfile.Attributes(nil)
-	// attributes: flowfile.Attributes{flowfile.Attribute{Name:"path", Value:"./"}}
+	// attributes: {}
+	// attributes: {"path":"./"}
 }
 
 // This show how to get an individual attribute
@@ -65,9 +72,9 @@ func ExampleAttributes_Unset() {
 	a.Set("filename", "abcd-efgh")
 
 	a.Unset("junk")
-	fmt.Printf("attributes: %#v\n", a)
+	fmt.Printf("attributes: %v\n", a)
 	// Output:
-	// attributes: flowfile.Attributes{flowfile.Attribute{Name:"path", Value:"./"}, flowfile.Attribute{Name:"filename", Value:"abcd-efgh"}}
+	// attributes: {"path":"./","filename":"abcd-efgh"}
 }
 
 // This show how to encode the attributes into a header for sending
@@ -79,9 +86,9 @@ func ExampleAttributes_WriteTo() {
 	buf := bytes.NewBuffer([]byte{})
 	a.WriteTo(buf)
 
-	fmt.Printf("attributes: %q\n", buf)
+	fmt.Printf("raw: %q\n", buf)
 	// Output:
-	// attributes: "NiFiFF3\x00\x02\x00\x04path\x00\x02./\x00\bfilename\x00\tabcd-efgh"
+	// raw: "NiFiFF3\x00\x02\x00\x04path\x00\x02./\x00\bfilename\x00\tabcd-efgh"
 }
 
 // This show how to decode the attributes frim a header for parsing
@@ -91,9 +98,9 @@ func ExampleAttributes_ReadFrom() {
 
 	a.ReadFrom(wire)
 
-	fmt.Printf("attributes: %#v\n", a)
+	fmt.Printf("attributes: %v\n", a)
 	// Output:
-	// attributes: flowfile.Attributes{flowfile.Attribute{Name:"path", Value:"./"}, flowfile.Attribute{Name:"filename", Value:"abcd-efgh"}}
+	// attributes: {"path":"./","filename":"abcd-efgh"}
 }
 
 // This show how to encode the attributes into a header for sending
@@ -117,7 +124,7 @@ func ExampleAttributes_Unmarshal() {
 		log.Fatal("Error unmarshalling attributes:", err)
 	}
 
-	fmt.Printf("attributes: %#v\n", a)
+	fmt.Printf("attributes: %v\n", a)
 	// Output:
-	// attributes: flowfile.Attributes{flowfile.Attribute{Name:"path", Value:"./"}, flowfile.Attribute{Name:"filename", Value:"abcd-efgh"}}
+	// attributes: {"path":"./","filename":"abcd-efgh"}
 }

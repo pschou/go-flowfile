@@ -7,6 +7,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
 	"time"
@@ -42,6 +43,21 @@ func (f *File) Save(baseDir string) (outputFile string, err error) {
 		if err == nil {
 			switch kind {
 			case "dir", "file", "":
+				if fm := f.Attrs.Get("file.permissions"); len(fm) >= 9 && runtime.GOOS != "windows" {
+					fm = fm[len(fm)-9:]
+					var out uint32
+					for i := 0; i < 3; i++ {
+						out = out << 3
+						for j := 0; j < 3; j++ {
+							if fm[i*3+j] != '-' {
+								out = out | (1 << (2 - j))
+							}
+						}
+					}
+					//fmt.Printf("%s -> %#o\n", fm, out)
+					os.Chmod(outputFile, os.FileMode(out))
+				}
+
 				// Update file time from sender
 				if mt := f.Attrs.Get("file.lastModifiedTime"); mt != "" {
 					if fileTime, err := iso8601.ParseString(mt); err == nil {

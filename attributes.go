@@ -3,12 +3,16 @@ package flowfile // import "github.com/pschou/go-flowfile"
 import (
 	"bytes"
 	"encoding/binary"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
 	"path"
+	"sort"
+	"strings"
 
 	"github.com/google/uuid"
+	"github.com/pschou/go-numstr"
 )
 
 // A single attribue in a FlowFile header
@@ -159,6 +163,55 @@ func MarshalAttributes(h Attributes) []byte {
 	buf := bytes.NewBuffer([]byte{})
 	h.WriteTo(buf)
 	return buf.Bytes()
+}
+
+// Print out the attributes as a spaced out JSON map
+func (h Attributes) IntentedString() string {
+	s := &strings.Builder{}
+	s.WriteString("{")
+	attrs := []Attribute(h)
+	for i, nv := range attrs {
+		if i > 0 {
+			s.WriteString(",")
+		}
+		s.WriteString("\n  ")
+		n, _ := json.Marshal(nv.Name)
+		v, _ := json.Marshal(nv.Value)
+		s.Write(n)
+		s.WriteString(":")
+		s.Write(v)
+	}
+	if len(attrs) > 0 {
+		s.WriteString("\n")
+	}
+	s.WriteString("}")
+	return s.String()
+}
+
+// Print out the attributes as a JSON map
+func (h Attributes) String() string {
+	s := &strings.Builder{}
+	s.WriteString("{")
+	attrs := []Attribute(h)
+	for i, nv := range attrs {
+		if i > 0 {
+			s.WriteString(",")
+		}
+		n, _ := json.Marshal(nv.Name)
+		v, _ := json.Marshal(nv.Value)
+		s.Write(n)
+		s.WriteString(":")
+		s.Write(v)
+	}
+	s.WriteString("}")
+	return s.String()
+}
+
+// Sort the attributes by name
+func (h *Attributes) Sort() {
+	attrs := []Attribute(*h)
+	sort.Slice(attrs, func(i, j int) bool { return numstr.LessThanFold(attrs[i].Name, attrs[j].Name) })
+	*h = attrs
 }
 
 // Parse the FlowFile attributes into binary writer.
