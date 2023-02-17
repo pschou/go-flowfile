@@ -14,11 +14,11 @@ import (
 )
 
 // Update the custodyChain field to increment all the values one and add an additional time and hostname.
-func (attrs *Attributes) CustodyChainShift() {
+func (h *Attributes) CustodyChainShift() {
 	var updated []Attribute
 
 	// Shift the current chain:
-	for _, kv := range []Attribute(*attrs) {
+	for _, kv := range []Attribute(*h) {
 		if strings.HasPrefix(kv.Name, "custodyChain.") {
 			parts := strings.SplitN(strings.TrimPrefix(kv.Name, "custodyChain."), ".", 2)
 			if v, err := strconv.Atoi(parts[0]); err == nil {
@@ -39,25 +39,25 @@ func (attrs *Attributes) CustodyChainShift() {
 	if hn, err := os.Hostname(); err == nil {
 		updated = append(updated, Attribute{"custodyChain.0.local.hostname", hn})
 	}
-	*attrs = Attributes(updated)
+	*h = Attributes(updated)
 }
 
-func (attrs *Attributes) CustodyChainAddListen(listen string) {
+func (h *Attributes) CustodyChainAddListen(listen string) {
 	if listen != "" {
 		if host, port, err := net.SplitHostPort(listen); err == nil {
-			updated := []Attribute(*attrs)
+			updated := []Attribute(*h)
 			if host != "" {
 				updated = append(updated, Attribute{"custodyChain.0.local.host", host})
 			}
 			updated = append(updated, Attribute{"custodyChain.0.local.port", port})
-			*attrs = Attributes(updated)
+			*h = Attributes(updated)
 		}
 	}
 }
 
 // Add attributes related to an http request, such as remote host, request URI, and TLS details.
-func (attrs *Attributes) CustodyChainAddHTTP(r *http.Request) {
-	updated := []Attribute(*attrs)
+func (h *Attributes) CustodyChainAddHTTP(r *http.Request) {
+	updated := []Attribute(*h)
 	var cert *x509.Certificate
 	if r.TLS != nil {
 		if len(r.TLS.PeerCertificates) > 0 {
@@ -99,7 +99,7 @@ func (attrs *Attributes) CustodyChainAddHTTP(r *http.Request) {
 	} else {
 		updated = append(updated, Attribute{"custodyChain.0.protocol", "HTTP"})
 	}
-	*attrs = updated
+	*h = updated
 }
 
 // Encode a certificate into a string for adding to attributes

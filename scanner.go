@@ -6,10 +6,11 @@ import (
 
 // A wrapper around an io.Reader which parses out the flow files.
 type Scanner struct {
-	r         io.Reader
-	err       error
-	last, one *File
-	every     func(*File)
+	r     io.Reader
+	err   error
+	last  *File
+	ch    chan *File
+	every func(*File)
 }
 
 // Create a new FlowFile reader, wrapping io.Reader for reading consecutive
@@ -17,6 +18,14 @@ type Scanner struct {
 func NewScanner(in io.Reader) *Scanner {
 	return &Scanner{
 		r: in,
+	}
+}
+
+// Create a new FlowFile reader, using a (chan *File) for reading consecutive
+// FlowFiles from a channel.
+func NewScannerChan(ch chan *File) *Scanner {
+	return &Scanner{
+		ch: ch,
 	}
 }
 
@@ -46,24 +55,24 @@ func (r *Scanner) Err() error {
 // reaching the end of the input or an error. After Scan returns false, the Err
 // method will return any error that occurred during scanning, except that if
 // it was io.EOF, Err will return nil.
-func (r *Scanner) Scan() bool {
+func (r *Scanner) Scan() (more bool) {
 	if r.err == io.EOF {
-		return false
+		return
 	}
 
 	// If this is a one-off reader, send the one and close out
 	if r.r == nil {
-		if r.one != nil {
-			r.last, r.one = r.one, nil
-			if r.every != nil {
+		if r.ch != nil {
+			if r.last != nil {
+				r.last.Close()
+			}
+
+			r.last, more = <-r.ch
+			if more && r.every != nil {
 				r.every(r.last)
 			}
-			return true
 		}
-		if r.last != nil {
-			r.last.Close()
-		}
-		return false
+		return
 	}
 
 	// Before we read the next from a stream, the previous must be closed
@@ -72,13 +81,13 @@ func (r *Scanner) Scan() bool {
 		last, r.last = r.last, nil
 		// Make sure last reader has been closed out
 		if r.err = last.Close(); r.err == io.EOF {
-			return false
+			return
 		}
 	}
 
 	// If there were any errors seen then return them
 	if r.err != nil {
-		return false
+		return
 	}
 
 	// Read a File from the reader

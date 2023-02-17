@@ -104,9 +104,7 @@ func HeaderSize(f *File) (n int) {
 // Parse the FlowFile attributes from a binary slice.
 func UnmarshalAttributes(in []byte, h *Attributes) (err error) {
 	*h = Attributes{}
-	if err = h.ReadFrom(bytes.NewBuffer(in)); err == io.EOF {
-		err = nil
-	}
+	err = h.ReadFrom(bytes.NewBuffer(in))
 	return
 }
 

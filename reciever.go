@@ -208,7 +208,9 @@ func (f *HTTPReceiver) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			}
 		default:
 			if N, err := strconv.ParseUint(r.Header.Get("Content-Length"), 10, 64); err == nil {
-				reader := &Scanner{one: &File{r: Body, n: int64(N)}, every: func(ff *File) {
+				ch := make(chan *File, 1)
+				ch <- &File{r: Body, n: int64(N)}
+				reader := &Scanner{ch: ch, every: func(ff *File) {
 					once.Do(doOnce)
 					f.bucketCounter(ff.Size)
 				}}
