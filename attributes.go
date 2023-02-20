@@ -12,7 +12,7 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
-	"github.com/pschou/go-numstr"
+	"github.com/pschou/go-sorting/numstr"
 )
 
 // A single attribue in a FlowFile header

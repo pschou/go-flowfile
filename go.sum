@@ -8,5 +8,9 @@ github.com/pschou/go-numstr v0.0.0-20230217202118-3dce6b027a9e h1:NQosG+2/WcuBoC
 github.com/pschou/go-numstr v0.0.0-20230217202118-3dce6b027a9e/go.mod h1:MgqHolZYrsOEHmo/Pnv/W7p3NhLugbZTzCZ8y/rDE5k=
 github.com/pschou/go-numstr v0.0.0-20230217202549-c04767600335 h1:S5kYiM8Zr1m8WVw17FS09KLHwTWbX6rQVIGpY30atbw=
 github.com/pschou/go-numstr v0.0.0-20230217202549-c04767600335/go.mod h1:MgqHolZYrsOEHmo/Pnv/W7p3NhLugbZTzCZ8y/rDE5k=
+github.com/pschou/go-sorting/numstr v0.0.0-20230218015952-a2a98f172ba3 h1:V2fr/o1j1eq5Ml2DsLJt7HkstDyCQaaD0uKLf0lG8Ws=
+github.com/pschou/go-sorting/numstr v0.0.0-20230218015952-a2a98f172ba3/go.mod h1:a31xFqyNamV1xh89pQLw9bLm0NClaBLZApDJ2OR7xHk=
+github.com/pschou/go-unixmode v0.0.0-20230220191411-3828898b2c82 h1:6LzxRsEJ7kMaGIjP9lIfjN1ddJmaPiZcnqOhIcS7+6k=
+github.com/pschou/go-unixmode v0.0.0-20230220191411-3828898b2c82/go.mod h1:/3Puf7C+6x6sALyEzj/vteGTkIDGe0xIr53eSneT3hs=
 github.com/relvacode/iso8601 v1.3.0 h1:HguUjsGpIMh/zsTczGN3DVJFxTU/GX+MMmzcKoMO7ko=
 github.com/relvacode/iso8601 v1.3.0/go.mod h1:FlNp+jz+TXpyRqgmM7tnzHHzBnz776kmAH2h3sZCn0I=

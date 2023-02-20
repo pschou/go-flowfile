@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/djherbis/times"
+	"github.com/pschou/go-unixmode"
 )
 
 // If the File was created with NewFromDisk, return the filename referenced.
@@ -50,10 +51,10 @@ func NewFromDisk(filename string) (*File, error) {
 	case mode.IsRegular():
 		f.Size = f.fileInfo.Size()
 		f.n = f.Size
-		f.Attrs.add("file.permissions", mode.String())
+		f.Attrs.add("file.permissions", unixmode.FileModePermString(mode))
 	case mode.IsDir():
 		f.Attrs.add("kind", "dir")
-		f.Attrs.add("file.permissions", mode.String())
+		f.Attrs.add("file.permissions", unixmode.FileModePermString(mode))
 	case mode&fs.ModeSymlink != 0:
 		target, _ := os.Readlink(filename)
 
