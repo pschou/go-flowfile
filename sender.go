@@ -28,8 +28,9 @@ type HTTPTransaction struct {
 	RetryDelay time.Duration
 	OnRetry    func(ff []*File, retry int, err error)
 
-	tlsConfig  *tls.Config
-	clientPool sync.Pool
+	tlsConfig *tls.Config
+	client    *http.Client
+	//clientPool sync.Pool
 
 	// Non-standard NiFi entities supported by this library
 	MaxPartitionSize int64  // Maximum partition size for partitioned file
@@ -51,14 +52,18 @@ func NewHTTPTransactionWithTransport(url string, cfg *http.Transport) (*HTTPTran
 		url:          url,
 		tlsConfig:    transportConfig.TLSClientConfig,
 		CheckSumType: "SHA256",
+		client: &http.Client{
+			//Timeout: 30 * time.Second,
+			Transport: transportConfig.Clone(),
+		},
 	}
-	hs.clientPool = sync.Pool{
-		New: func() any {
-			return &http.Client{
-				//Timeout: 30 * time.Second,
-				Transport: transportConfig.Clone(),
-			}
-		}}
+	/*hs.clientPool = sync.Pool{
+	New: func() any {
+		return &http.Client{
+			//Timeout: 30 * time.Second,
+			Transport: transportConfig.Clone(),
+		}
+	}}*/
 
 	err := hs.Handshake()
 	if err != nil {
@@ -78,26 +83,43 @@ func NewHTTPTransaction(url string, cfg *tls.Config) (*HTTPTransaction, error) {
 		url:          url,
 		tlsConfig:    cfg,
 		CheckSumType: "SHA256",
+		client: &http.Client{
+			//Timeout: 30 * time.Second,
+			Transport: &http.Transport{
+				Proxy:       http.ProxyFromEnvironment,
+				DialContext: (&net.Dialer{
+					//Timeout:   30 * time.Second,
+					//KeepAlive: 30 * time.Second,
+				}).DialContext,
+				ForceAttemptHTTP2: true,
+				MaxIdleConns:      100,
+				//IdleConnTimeout:       90 * time.Second,
+				TLSHandshakeTimeout:   10 * time.Second,
+				ExpectContinueTimeout: 1 * time.Second,
+				TLSClientConfig:       tlsConfig,
+			}},
 	}
-	hs.clientPool = sync.Pool{
-		New: func() any {
-			return &http.Client{
-				//Timeout: 30 * time.Second,
-				Transport: &http.Transport{
-					Proxy:       http.ProxyFromEnvironment,
-					DialContext: (&net.Dialer{
-						//Timeout:   30 * time.Second,
-						//KeepAlive: 30 * time.Second,
-					}).DialContext,
-					ForceAttemptHTTP2: true,
-					MaxIdleConns:      100,
-					//IdleConnTimeout:       90 * time.Second,
-					TLSHandshakeTimeout:   10 * time.Second,
-					ExpectContinueTimeout: 1 * time.Second,
-					TLSClientConfig:       tlsConfig,
-				},
-			}
-		}}
+	/*
+		hs.clientPool = sync.Pool{
+			New: func() any {
+				return &http.Client{
+					//Timeout: 30 * time.Second,
+					Transport: &http.Transport{
+						Proxy:       http.ProxyFromEnvironment,
+						DialContext: (&net.Dialer{
+							//Timeout:   30 * time.Second,
+							//KeepAlive: 30 * time.Second,
+						}).DialContext,
+						ForceAttemptHTTP2: true,
+						MaxIdleConns:      100,
+						//IdleConnTimeout:       90 * time.Second,
+						TLSHandshakeTimeout:   10 * time.Second,
+						ExpectContinueTimeout: 1 * time.Second,
+						TLSClientConfig:       tlsConfig,
+					},
+				}
+			}}
+	*/
 
 	err := hs.Handshake()
 	if err != nil {
@@ -111,8 +133,8 @@ func NewHTTPTransaction(url string, cfg *tls.Config) (*HTTPTransaction, error) {
 // will be sent until this is completed.
 func (hs *HTTPTransaction) Handshake() error {
 
-	client := hs.clientPool.Get().(*http.Client)
-	defer hs.clientPool.Put(client)
+	//client := hs.clientPool.Get().(*http.Client)
+	//defer hs.clientPool.Put(client)
 
 	//if Debug {
 	//	log.Printf("HTTP.Client: %#v\n", *client)
@@ -128,7 +150,7 @@ func (hs *HTTPTransaction) Handshake() error {
 	req.Header.Set("Connection", "Keep-alive")
 	req.Header.Set("User-Agent", UserAgent)
 	tick := time.Now()
-	res, err := client.Do(req)
+	res, err := hs.client.Do(req)
 	if err != nil {
 		return err
 	}
@@ -371,10 +393,10 @@ func (hw *HTTPPostWriter) Write(f *File) (n int64, err error) {
 
 // Close the HTTPPostWriter and flush the data to the stream
 func (hw *HTTPPostWriter) Close() (err error) {
-	defer func() {
+	/*defer func() {
 		hw.hs.clientPool.Put(hw.client)
 		hw.client = nil
-	}()
+	}()*/
 
 	if hw.err != nil {
 		return hw.err
@@ -420,10 +442,10 @@ func (hw *HTTPPostWriter) Terminate() {
 // files will be marked as failed if the the HTTP POST is not a success.
 func (hs *HTTPTransaction) NewHTTPPostWriter() (httpWriter *HTTPPostWriter) {
 
-	client := hs.clientPool.Get().(*http.Client)
+	//client := hs.clientPool.Get().(*http.Client)
 
 	if Debug {
-		log.Printf("HTTP.Client: %#v\n", *client)
+		log.Printf("HTTP.Client: %#v\n", *hs.client)
 	}
 
 	r, w := io.Pipe()
@@ -432,7 +454,7 @@ func (hs *HTTPTransaction) NewHTTPPostWriter() (httpWriter *HTTPPostWriter) {
 		pw:        w,
 		w:         w,
 		hs:        hs,
-		client:    client,
+		client:    hs.client,
 		clientErr: make(chan error),
 	}
 	httpWriter.init = func() {
@@ -457,7 +479,7 @@ func (hs *HTTPTransaction) NewHTTPBufferedPostWriter() (httpWriter *HTTPPostWrit
 		done: make(chan bool),
 	}
 
-	client := hs.clientPool.Get().(*http.Client)
+	//client := hs.clientPool.Get().(*http.Client)
 
 	httpWriter = &HTTPPostWriter{
 		Header:        make(http.Header),
@@ -465,7 +487,7 @@ func (hs *HTTPTransaction) NewHTTPBufferedPostWriter() (httpWriter *HTTPPostWrit
 		w:             mlw,
 		hs:            hs,
 		FlushInterval: 400 * time.Millisecond,
-		client:        client,
+		client:        hs.client,
 		clientErr:     make(chan error),
 	}
 
