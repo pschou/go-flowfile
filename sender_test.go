@@ -71,12 +71,12 @@ func ExampleNewHTTPTransaction() {
 
 	dat := []byte("NiFiFF3\x00\x02\x00\x04path\x00\x02./\x00\bfilename\x00\tabcd-efgh\x00\x00\x00\x00\x00\x00\x00$this is a custom string for flowfile")
 	var ff flowfile.File
-	err = flowfile.Unmarshal(dat, &ff)
+	err = ff.UnmarshalBinary(dat)
 
 	err = hs.Send(&ff)
 }
 
-func ExampleSendConfig() {
+func ExampleHTTPPostWriter_sendWithCustomHeader() {
 	// Create a new HTTPTransaction, used for sending batches of flowfiles
 	hs, err := flowfile.NewHTTPTransaction("http://localhost:8080/contentListener", tlsConfig)
 	if err != nil {
@@ -85,7 +85,7 @@ func ExampleSendConfig() {
 
 	dat := []byte("NiFiFF3\x00\x02\x00\x04path\x00\x02./\x00\bfilename\x00\tabcd-efgh\x00\x00\x00\x00\x00\x00\x00$this is a custom string for flowfile")
 	var ff flowfile.File
-	err = flowfile.Unmarshal(dat, &ff)
+	err = ff.UnmarshalBinary(dat)
 
 	hp := hs.NewHTTPPostWriter()
 	defer hp.Close()

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -96,7 +97,7 @@ func (h *Attributes) Set(name, val string) *Attributes {
 
 // Return the size of the header for computations of the total flow file size.
 //   Total Size = Header + Data
-func HeaderSize(f *File) (n int) {
+func (f File) HeaderSize() (n int) {
 	attrs := []Attribute(f.Attrs)
 	n += 17 + 4*len(attrs)
 	for _, a := range attrs {
@@ -106,7 +107,7 @@ func HeaderSize(f *File) (n int) {
 }
 
 // Parse the FlowFile attributes from a binary slice.
-func UnmarshalAttributes(in []byte, h *Attributes) (err error) {
+func (h *Attributes) UnmarshalBinary(in []byte) (err error) {
 	*h = Attributes{}
 	err = h.ReadFrom(bytes.NewBuffer(in))
 	return
@@ -159,36 +160,28 @@ func (h *Attributes) ReadFrom(in io.Reader) (err error) {
 }
 
 // Parse the FlowFile attributes into binary slice.
-func MarshalAttributes(h Attributes) []byte {
+func (h Attributes) MarshalBinary() ([]byte, error) {
 	buf := bytes.NewBuffer([]byte{})
 	h.WriteTo(buf)
-	return buf.Bytes()
+	return buf.Bytes(), nil
 }
 
-// Print out the attributes as a spaced out JSON map
-func (h Attributes) IntentedString() string {
-	s := &strings.Builder{}
-	s.WriteString("{")
-	attrs := []Attribute(h)
-	for i, nv := range attrs {
-		if i > 0 {
-			s.WriteString(",")
-		}
-		s.WriteString("\n  ")
-		n, _ := json.Marshal(nv.Name)
-		v, _ := json.Marshal(nv.Value)
-		s.Write(n)
-		s.WriteString(":")
-		s.Write(v)
-	}
-	if len(attrs) > 0 {
-		s.WriteString("\n")
-	}
-	s.WriteString("}")
-	return s.String()
-}
+// Print out the attributes as a JSON map in a string
+//
+// To make this easy to read, use the json.Indent package like this:
+//
+//   var out bytes.Buffer
+//   attrs.Sort()  // Optional, sort the attributes by name
+//   json.Indent(&out, []byte(attrs.String()), "", "  ")
+//   fmt.Printf("attributes: %s\n", out.String())
+//
+//   attributes: {
+//     "custodyChain.1.host": "myhost",
+//     "custodyChain.7.time": "...",
+//     "custodyChain.11.time": "...",
+//     "filename": "abcd-efgh"
+//   }
 
-// Print out the attributes as a JSON map
 func (h Attributes) String() string {
 	s := &strings.Builder{}
 	s.WriteString("{")
@@ -205,6 +198,44 @@ func (h Attributes) String() string {
 	}
 	s.WriteString("}")
 	return s.String()
+}
+
+// Provides a MarshalJSON interface
+func (h Attributes) MarshalJSON() ([]byte, error) {
+	return []byte(h.String()), nil
+}
+
+var ErrorUnmarshallingAttributes = errors.New("Error unmarshalling attributes")
+
+func (h *Attributes) UnmarshalJSON(in []byte) error {
+	dec := json.NewDecoder(bytes.NewReader(in))
+	t, err := dec.Token()
+	if d, ok := t.(json.Delim); (ok && d.String() != "{") || err != nil {
+		return ErrorUnmarshallingAttributes
+	}
+	var vals []string
+	var attrs []Attribute
+	for dec.More() {
+		if t, err = dec.Token(); err != nil {
+			return err
+		}
+		switch v := t.(type) {
+		case string:
+			vals = append(vals, v)
+		default:
+			return ErrorUnmarshallingAttributes
+		}
+		if len(vals) == 2 {
+			attrs = append(attrs, Attribute{Name: vals[0], Value: vals[1]})
+			vals = nil
+		}
+	}
+	t, err = dec.Token()
+	if d, ok := t.(json.Delim); (ok && d.String() != "}") || err != nil {
+		return ErrorUnmarshallingAttributes
+	}
+	*h = attrs
+	return nil
 }
 
 // Sort the attributes by name

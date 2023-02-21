@@ -10,7 +10,7 @@ import (
 )
 
 // Sends files out a writer, making sure the headers are sent before each file is sent.
-func ExampleNewEncoder() {
+func ExampleFile_NewWriter() {
 	wire := bytes.NewBuffer([]byte{})
 	enc := flowfile.NewWriter(wire)
 	{
@@ -27,11 +27,11 @@ func ExampleNewEncoder() {
 }
 
 // Sends files out a writer, making sure the headers are sent before each file is sent.
-func ExampleUnmarshal() {
+func ExampleFile_UnmarshalBinary() {
 	dat := []byte("NiFiFF3\x00\x02\x00\x04path\x00\x02./\x00\bfilename\x00\tabcd-efgh\x00\x00\x00\x00\x00\x00\x00$this is a custom string for flowfile")
 
 	var f flowfile.File
-	err := flowfile.Unmarshal(dat, &f)
+	err := f.UnmarshalBinary(dat)
 	if err != nil {
 		fmt.Println("Error unmarshalling:", err)
 	}

@@ -3,6 +3,7 @@ package flowfile // import "github.com/pschou/go-flowfile"
 import (
 	"bytes"
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -36,7 +37,7 @@ func (e *Writer) Write(f *File) (n int64, err error) {
 // Marshal a FlowFile into a byte slice.
 //
 // Note: This is not preferred as it can cause memory bloat.
-func Marshal(f *File) (dat []byte, err error) {
+func (f *File) MarshalBinary(dat []byte, err error) {
 	buf := bytes.NewBuffer(dat)
 	enc := &Writer{w: buf}
 	_, err = enc.Write(f)
@@ -75,11 +76,16 @@ func parseOne(in io.Reader) (f *File, err error) {
 // processing.
 //
 // Note: This is not preferred as it can cause memory bloat.
-func Unmarshal(dat []byte, f *File) (err error) {
+func (f *File) UnmarshalBinary(dat []byte) (err error) {
 	var ff *File
 	ff, err = parseOne(bytes.NewReader(dat))
-	if ff != nil {
+	if err == nil {
+		if int64(ff.HeaderSize())+ff.Size != int64(len(dat)) {
+			return ErrorInconsistantSize
+		}
 		*f = *ff
 	}
 	return
 }
+
+var ErrorInconsistantSize = errors.New("Inconsistant flowfile size")

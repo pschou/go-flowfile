@@ -2,6 +2,7 @@ package flowfile_test
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"log"
 
@@ -20,14 +21,33 @@ func ExampleCustodyChainShift() {
 
 	a.Unset("custodyChain.0.time")
 	a.Unset("custodyChain.0.local.hostname")
-	fmt.Printf("attributes: %s\n", a.IntentedString())
+
+	var out bytes.Buffer
+	json.Indent(&out, []byte(a.String()), "", "  ")
+	fmt.Printf("attributes: %s\n", out.String())
 	// Output:
 	// attributes: {
-	//   "custodyChain.1.host":"data",
-	//   "custodyChain.7.time":"now",
-	//   "custodyChain.11.time":"now",
-	//   "filename":"abcd-efgh"
+	//   "custodyChain.1.host": "data",
+	//   "custodyChain.7.time": "now",
+	//   "custodyChain.11.time": "now",
+	//   "filename": "abcd-efgh"
 	// }
+}
+
+func ExampleAttributes_UnmarshalJson() {
+	var a flowfile.Attributes
+	err := a.UnmarshalJSON([]byte(`{
+    "custodyChain.1.host":"data",
+    "custodyChain.7.time":"now",
+    "custodyChain.11.time":"now",
+    "filename":"abcd-efgh"
+  }`))
+	if err != nil {
+		log.Println("error:", err)
+	}
+	fmt.Println("attrs:", a.String())
+	// Output:
+	// attrs: {"custodyChain.1.host":"data","custodyChain.7.time":"now","custodyChain.11.time":"now","filename":"abcd-efgh"}
 }
 
 // This show how to set an individual attribute
@@ -43,13 +63,15 @@ func ExampleAttributes_Set() {
 }
 
 // This show how to get an individual attribute
-func ExampleAttributes_ByteLen() {
+func ExampleHeaderSize() {
 	var a flowfile.Attributes
 	a.Set("path", "./")
 	a.Set("val", "a")
 
-	b := flowfile.MarshalAttributes(a)
-	fmt.Println("attribute len:", flowfile.HeaderSize(&flowfile.File{Attrs: a}), len(b)+8)
+	b, _ := a.MarshalBinary()
+	f := flowfile.New(bytes.NewReader([]byte{}), 0)
+	f.Attrs = a
+	fmt.Println("attribute len:", f.HeaderSize(), len(b)+8)
 	// Output:
 	// attribute len: 35 35
 }
@@ -104,22 +126,23 @@ func ExampleAttributes_ReadFrom() {
 }
 
 // This show how to encode the attributes into a header for sending
-func ExampleAttributes_Marshal() {
+func ExampleAttributes_MarshalBinary() {
 	var a flowfile.Attributes
 	a.Set("path", "./")
 	a.Set("filename", "abcd-efgh")
 
-	fmt.Printf("attributes: %q\n", flowfile.MarshalAttributes(a))
+	b, _ := a.MarshalBinary()
+	fmt.Printf("attributes: %q\n", b)
 	// Output:
 	// attributes: "NiFiFF3\x00\x02\x00\x04path\x00\x02./\x00\bfilename\x00\tabcd-efgh"
 }
 
 // This show how to decode the attributes frim a header for parsing
-func ExampleAttributes_Unmarshal() {
+func ExampleAttributes_UnmarshalBinary() {
 	var a flowfile.Attributes
 	buf := []byte("NiFiFF3\x00\x02\x00\x04path\x00\x02./\x00\bfilename\x00\tabcd-efgh")
 
-	err := flowfile.UnmarshalAttributes(buf, &a)
+	err := a.UnmarshalBinary(buf)
 	if err != nil {
 		log.Fatal("Error unmarshalling attributes:", err)
 	}
