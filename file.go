@@ -119,8 +119,9 @@ type File struct {
 	ra io.ReaderAt // underlying ReadAt (if available)
 
 	// If a ReadFile is called
-	filePath string      // path to file on disk
-	fileInfo os.FileInfo // information about the file
+	filePath     string      // path to file on disk
+	fileInfo     os.FileInfo // information about the file
+	fileAutoOpen bool
 
 	// Checksum holder for post-stream checksum verification
 	cksumStatus int8
@@ -160,14 +161,19 @@ func (f *File) Reset() error {
 // Read will read the content from a FlowFile
 func (l *File) Read(p []byte) (n int, err error) {
 	if l.n <= 0 || l.Size == 0 {
+		if l.fileAutoOpen {
+			l.fileAutoOpen = false
+			fh := l.ra.(*os.File)
+			fh.Close()
+		}
 		return 0, io.EOF
 	}
-	if l.filePath != "" && l.ra == nil {
+	if l.filePath != "" && l.ra == nil && l.n > 0 {
 		fh, err := os.Open(l.filePath)
 		if err != nil {
 			return 0, err
 		}
-		l.ra = fh
+		l.ra, l.fileAutoOpen = fh, true
 	}
 	if int64(len(p)) > l.n {
 		p = p[0:l.n]
@@ -186,7 +192,12 @@ func (l *File) Read(p []byte) (n int, err error) {
 			log.Println("checksum write error", err)
 		}
 	}
-	if err == nil && l.n <= 0 {
+	if (err == nil || err == io.EOF) && l.n <= 0 {
+		if l.fileAutoOpen {
+			l.fileAutoOpen = false
+			fh := l.ra.(*os.File)
+			fh.Close()
+		}
 		err = io.EOF
 	}
 	return
@@ -198,7 +209,8 @@ func (l *File) Read(p []byte) (n int, err error) {
 // current payload from consideration and moving the reader pointer forward,
 // making the next flowfile available for reading.
 func (l *File) Close() (err error) {
-	if l.filePath != "" {
+	if l.fileAutoOpen {
+		l.fileAutoOpen = false
 		fh := l.ra.(*os.File)
 		return fh.Close()
 	}
