@@ -130,15 +130,26 @@ func (f *File) AddChecksum(cksum string) error {
 		return fmt.Errorf("Unable to find checksum type: %q", cksum)
 	}
 
-	ra := f.ra
+	var ra io.ReaderAt
+	if f.ra != nil {
+		ra = f.ra
+	}
 
 	// Case where the file is not currently open, open and do the checksum and close
 	if ra == nil && f.filePath != "" {
+		if Debug {
+			log.Println("Opening file for checksum", f.filePath)
+		}
 		if fh, err := os.Open(f.filePath); err != nil {
 			return err
 		} else {
 			ra = fh
-			defer fh.Close()
+			defer func() {
+				if Debug {
+					log.Println("Closing file after checksum", f.filePath)
+				}
+				fh.Close()
+			}()
 		}
 	}
 
@@ -167,7 +178,14 @@ func (f *File) AddChecksum(cksum string) error {
 				}
 			}
 			if err != nil {
-				return err
+				if err == io.EOF {
+					return nil
+				} else {
+					if Debug {
+						log.Println("Reading for checksum ran into error", err)
+					}
+					return err
+				}
 			}
 		}
 	}
