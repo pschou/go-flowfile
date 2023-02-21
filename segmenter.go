@@ -2,6 +2,7 @@ package flowfile // import "github.com/pschou/go-flowfile"
 
 import (
 	"fmt"
+	"os"
 )
 
 // Splits up a flowfile into count number of segments.  The intended purpose
@@ -57,15 +58,20 @@ func SegmentBySize(in *File, segmentSize int64) (out []*File, err error) {
 			en = size
 		}
 
+		if in.fileAutoOpen { // Make sure the file is closed if auto opened
+			in.fileAutoOpen = false
+			fh := in.ra.(*os.File)
+			in.ra = nil
+			fh.Close()
+		}
+
 		f := &File{
+			ra:       in.ra,
 			filePath: in.filePath,
 			i:        st,
 			Size:     en - st,
 			n:        en - st,
 			Attrs:    baseAttrs.Clone(),
-		}
-		if in.filePath == "" {
-			f.ra = in.ra
 		}
 		f.Attrs.Set("merge.reason", "MAX_BYTES_THRESHOLD_REACHED")
 		f.Attrs.Set("fragment.offset", fmt.Sprintf("%d", st))

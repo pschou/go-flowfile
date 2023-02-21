@@ -161,9 +161,10 @@ func (f *File) Reset() error {
 // Read will read the content from a FlowFile
 func (l *File) Read(p []byte) (n int, err error) {
 	if l.n <= 0 || l.Size == 0 {
-		if l.fileAutoOpen {
+		if l.fileAutoOpen { // Make sure the file is closed if auto opened
 			l.fileAutoOpen = false
 			fh := l.ra.(*os.File)
+			l.ra = nil
 			fh.Close()
 		}
 		return 0, io.EOF
@@ -193,9 +194,10 @@ func (l *File) Read(p []byte) (n int, err error) {
 		}
 	}
 	if (err == nil || err == io.EOF) && l.n <= 0 {
-		if l.fileAutoOpen {
+		if l.fileAutoOpen { // Make sure the file is closed if auto opened
 			l.fileAutoOpen = false
 			fh := l.ra.(*os.File)
+			l.ra = nil
 			fh.Close()
 		}
 		err = io.EOF
@@ -209,9 +211,10 @@ func (l *File) Read(p []byte) (n int, err error) {
 // current payload from consideration and moving the reader pointer forward,
 // making the next flowfile available for reading.
 func (l *File) Close() (err error) {
-	if l.fileAutoOpen {
+	if l.fileAutoOpen { // Make sure the file is closed if auto opened
 		l.fileAutoOpen = false
 		fh := l.ra.(*os.File)
+		l.ra = nil
 		return fh.Close()
 	}
 
