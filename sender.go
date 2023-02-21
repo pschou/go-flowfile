@@ -30,7 +30,6 @@ type HTTPTransaction struct {
 
 	tlsConfig *tls.Config
 	client    *http.Client
-	//clientPool sync.Pool
 
 	// Non-standard NiFi entities supported by this library
 	MaxPartitionSize int64  // Maximum partition size for partitioned file
@@ -57,13 +56,6 @@ func NewHTTPTransactionWithTransport(url string, cfg *http.Transport) (*HTTPTran
 			Transport: transportConfig.Clone(),
 		},
 	}
-	/*hs.clientPool = sync.Pool{
-	New: func() any {
-		return &http.Client{
-			//Timeout: 30 * time.Second,
-			Transport: transportConfig.Clone(),
-		}
-	}}*/
 
 	err := hs.Handshake()
 	if err != nil {
@@ -99,27 +91,6 @@ func NewHTTPTransaction(url string, cfg *tls.Config) (*HTTPTransaction, error) {
 				TLSClientConfig:       tlsConfig,
 			}},
 	}
-	/*
-		hs.clientPool = sync.Pool{
-			New: func() any {
-				return &http.Client{
-					//Timeout: 30 * time.Second,
-					Transport: &http.Transport{
-						Proxy:       http.ProxyFromEnvironment,
-						DialContext: (&net.Dialer{
-							//Timeout:   30 * time.Second,
-							//KeepAlive: 30 * time.Second,
-						}).DialContext,
-						ForceAttemptHTTP2: true,
-						MaxIdleConns:      100,
-						//IdleConnTimeout:       90 * time.Second,
-						TLSHandshakeTimeout:   10 * time.Second,
-						ExpectContinueTimeout: 1 * time.Second,
-						TLSClientConfig:       tlsConfig,
-					},
-				}
-			}}
-	*/
 
 	err := hs.Handshake()
 	if err != nil {
@@ -132,14 +103,6 @@ func NewHTTPTransaction(url string, cfg *tls.Config) (*HTTPTransaction, error) {
 // process of transferring flowfiles.  This is a blocking call so no new files
 // will be sent until this is completed.
 func (hs *HTTPTransaction) Handshake() error {
-
-	//client := hs.clientPool.Get().(*http.Client)
-	//defer hs.clientPool.Put(client)
-
-	//if Debug {
-	//	log.Printf("HTTP.Client: %#v\n", *client)
-	//}
-
 	req, err := http.NewRequest("HEAD", hs.url, nil)
 	if err != nil {
 		return err
@@ -393,11 +356,6 @@ func (hw *HTTPPostWriter) Write(f *File) (n int64, err error) {
 
 // Close the HTTPPostWriter and flush the data to the stream
 func (hw *HTTPPostWriter) Close() (err error) {
-	/*defer func() {
-		hw.hs.clientPool.Put(hw.client)
-		hw.client = nil
-	}()*/
-
 	if hw.err != nil {
 		return hw.err
 	}
@@ -442,8 +400,6 @@ func (hw *HTTPPostWriter) Terminate() {
 // files will be marked as failed if the the HTTP POST is not a success.
 func (hs *HTTPTransaction) NewHTTPPostWriter() (httpWriter *HTTPPostWriter) {
 
-	//client := hs.clientPool.Get().(*http.Client)
-
 	if Debug {
 		log.Printf("HTTP.Client: %#v\n", *hs.client)
 	}
@@ -478,8 +434,6 @@ func (hs *HTTPTransaction) NewHTTPBufferedPostWriter() (httpWriter *HTTPPostWrit
 		c:    w,
 		done: make(chan bool),
 	}
-
-	//client := hs.clientPool.Get().(*http.Client)
 
 	httpWriter = &HTTPPostWriter{
 		Header:        make(http.Header),
