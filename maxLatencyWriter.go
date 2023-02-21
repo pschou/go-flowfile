@@ -40,7 +40,8 @@ func (m *maxLatencyWriter) flushLoop() {
 func (m *maxLatencyWriter) Close() error {
 	m.done <- true
 	m.mu.Lock()
-	defer m.mu.Unlock()
 	m.dst.Flush()
+	m.dst.Reset(nil)
+	m.mu.Unlock()
 	return m.c.Close()
 }

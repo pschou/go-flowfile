@@ -371,6 +371,11 @@ func (hw *HTTPPostWriter) Write(f *File) (n int64, err error) {
 
 // Close the HTTPPostWriter and flush the data to the stream
 func (hw *HTTPPostWriter) Close() (err error) {
+	defer func() {
+		hw.hs.clientPool.Put(hw.client)
+		hw.client = nil
+	}()
+
 	if hw.err != nil {
 		return hw.err
 	}
@@ -379,7 +384,7 @@ func (hw *HTTPPostWriter) Close() (err error) {
 	defer hw.writeLock.Unlock()
 	if hw.w == hw.pw {
 		hw.w.Close()
-		hw.pw, hw.w = nil, nil
+		hw.w = nil
 	} else {
 		hw.w.Close()
 		hw.w = nil
@@ -395,13 +400,14 @@ func (hw *HTTPPostWriter) Close() (err error) {
 		log.Println("replied!", hw.err, hw.Response)
 	}
 
-	hw.hs.clientPool.Put(hw.client)
-	hw.client = nil
 	return hw.err
 }
 
 // Terminate the HTTPPostWriter
 func (hw *HTTPPostWriter) Terminate() {
+	if mlw, ok := hw.w.(*maxLatencyWriter); ok {
+		mlw.dst.Reset(nil)
+	}
 	hw.pw.CloseWithError(fmt.Errorf("Post Terminated"))
 }
 
