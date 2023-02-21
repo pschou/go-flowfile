@@ -58,12 +58,14 @@ func SegmentBySize(in *File, segmentSize int64) (out []*File, err error) {
 		}
 
 		f := &File{
-			ra:       in.ra,
 			filePath: in.filePath,
 			i:        st,
 			Size:     en - st,
 			n:        en - st,
 			Attrs:    baseAttrs.Clone(),
+		}
+		if in.filePath == "" {
+			f.ra = in.ra
 		}
 		f.Attrs.Set("merge.reason", "MAX_BYTES_THRESHOLD_REACHED")
 		f.Attrs.Set("fragment.offset", fmt.Sprintf("%d", st))
