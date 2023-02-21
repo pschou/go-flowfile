@@ -217,8 +217,7 @@ func (hs *HTTPTransaction) doSend(ff ...*File) (err error) {
 			return
 		}
 	}
-	err = httpWriter.Close()
-	if err != nil {
+	if err = httpWriter.Close(); err != nil {
 		return
 	}
 	if httpWriter.Response == nil {
@@ -378,8 +377,15 @@ func (hw *HTTPPostWriter) Close() (err error) {
 
 	hw.writeLock.Lock()
 	defer hw.writeLock.Unlock()
-	hw.w.Close()
-	hw.w = nil
+	if hw.w == hw.pw {
+		hw.w.Close()
+		hw.pw, hw.w = nil, nil
+	} else {
+		hw.w.Close()
+		hw.w = nil
+		hw.pw.Close()
+		hw.pw = nil
+	}
 
 	if Debug {
 		log.Println("closed channel, waiting for post reply")
