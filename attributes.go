@@ -118,6 +118,11 @@ const (
 	FlowFileEOF     = "NiFiEOF"
 )
 
+var (
+	ErrorNoFlowFileHeader      = errors.New("No NiFiFF3 header found")
+	ErrorInvalidFlowFileHeader = errors.New("Invalid of incomplete FlowFile header")
+)
+
 // Parse the FlowFile attributes from binary Reader.
 func (h *Attributes) ReadFrom(in io.Reader) (err error) {
 	{
@@ -126,37 +131,37 @@ func (h *Attributes) ReadFrom(in io.Reader) (err error) {
 			if err == http.ErrBodyReadAfterClose || err == io.EOF {
 				return io.EOF
 			}
-			return fmt.Errorf("Error reading FlowFile header: %s", err)
+			return ErrorInvalidFlowFileHeader
 		}
 		if string(hdr) == FlowFileEOF {
 			return io.EOF
 		} else if string(hdr) != FlowFile3Header {
-			return fmt.Errorf("No NiFiFF3 header found")
+			return ErrorNoFlowFileHeader
 		}
 	}
 
 	var attrCount, size uint16
 	if err = binary.Read(in, binary.BigEndian, &attrCount); err != nil {
-		return fmt.Errorf("Error reading attrCount: %s", err)
+		return ErrorInvalidFlowFileHeader
 	}
 	for i := uint16(0); i < attrCount; i++ {
 		if err = binary.Read(in, binary.BigEndian, &size); err != nil {
-			return fmt.Errorf("Error reading attrName size: %s", err)
+			return ErrorInvalidFlowFileHeader
 		}
 		attrName := make([]byte, size)
 		if _, err = in.Read(attrName); err != nil {
-			return fmt.Errorf("Error reading attrName: %s", err)
+			return ErrorInvalidFlowFileHeader
 		}
 		if err = binary.Read(in, binary.BigEndian, &size); err != nil {
-			return fmt.Errorf("Error reading attrValue size: %s", err)
+			return ErrorInvalidFlowFileHeader
 		}
 		attrValue := make([]byte, size)
 		if _, err = in.Read(attrValue); err != nil {
-			return fmt.Errorf("Error reading attrValue: %s", err)
+			return ErrorInvalidFlowFileHeader
 		}
 		h.Set(string(attrName), string(attrValue))
 	}
-	return
+	return nil
 }
 
 // Parse the FlowFile attributes into binary slice.
