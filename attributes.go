@@ -125,6 +125,7 @@ var (
 
 // Parse the FlowFile attributes from binary Reader.
 func (h *Attributes) ReadFrom(in io.Reader) (err error) {
+	var new Attributes
 	{
 		hdr := make([]byte, 7)
 		if _, err = in.Read(hdr); err != nil {
@@ -159,8 +160,9 @@ func (h *Attributes) ReadFrom(in io.Reader) (err error) {
 		if _, err = in.Read(attrValue); err != nil {
 			return ErrorInvalidFlowFileHeader
 		}
-		h.Set(string(attrName), string(attrValue))
+		new = append(new, Attribute{string(attrName), string(attrValue)})
 	}
+	*h = new
 	return nil
 }
 
