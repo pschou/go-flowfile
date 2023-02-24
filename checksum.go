@@ -56,9 +56,27 @@ func (l *File) Verify() error {
 	return ErrorChecksumMissing
 }
 
+// AddChecksumFromVerify will take the checksum computed in the verify step and set the checksum attribute to match.  This effectively makes a FlowFile pass what may other be a failed verification.  Useful for updating a checksum to an existing flowfile after it has been fully read in.
+func (l *File) AddChecksumFromVerify() error {
+	if l.Size == 0 && l.n == 0 {
+		return nil
+	}
+	switch l.cksumStatus {
+	case cksumInit, cksumPassed, cksumFailed:
+		hashval := l.cksum.Sum(nil)
+		l.Attrs.Set("checksum", fmt.Sprintf("%0x", hashval))
+		l.cksumStatus = cksumPassed
+		return nil
+	}
+	return errors.New("Checksum was not initialized")
+}
+
 // Verify a given hash against the file sent, to ensure a complete and accurate
 // payload.
 func (l *File) VerifyHash(h hash.Hash) error {
+	if h == nil {
+		return errors.New("Invalid hash")
+	}
 	hashval := h.Sum(nil)
 	if fmt.Sprintf("%0x", hashval) == l.Attrs.Get("checksum") {
 		return nil
@@ -108,7 +126,7 @@ func (l *File) VerifyParent(fp string) error {
 }
 
 // Create a new checksum for verifying payload.
-func (h Attributes) NewEmptyChecksum() hash.Hash {
+func (h Attributes) NewChecksumHash() hash.Hash {
 	if ct := h.Get("checksumType"); ct != "" {
 		new := getChecksumFunc(ct)
 		if new != nil {
@@ -118,8 +136,8 @@ func (h Attributes) NewEmptyChecksum() hash.Hash {
 	return nil
 }
 
-// Internal function called before a file is read for setting up the hashing function.
-func (l *File) cksumInit() {
+// Function called before a file is read for setting up the hashing function.
+func (l *File) ChecksumInit() error {
 	if Debug {
 		log.Println("Checksum init for", l.Attrs.Get("filename"))
 	}
@@ -129,11 +147,13 @@ func (l *File) cksumInit() {
 			if new != nil {
 				l.cksum = new()
 				l.cksumStatus = cksumInit
+				return nil
 			}
-		} else {
-			l.cksumStatus = cksumUnverified
 		}
+		l.cksumStatus = cksumUnverified
+		return errors.New("Unable to find matching checksum type")
 	}
+	return nil
 }
 
 // Add checksum to flowfile, requires a ReadAt interface in the flowfile context.
