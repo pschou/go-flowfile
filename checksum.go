@@ -96,6 +96,16 @@ func (l *File) VerifyParent(fp string) error {
 	return fmt.Errorf("No segment.original.checksumType")
 }
 
+func (h Attributes) NewEmptyChecksum() hash.Hash {
+	if ct := h.Get("checksumType"); ct != "" {
+		new := getChecksumFunc(ct)
+		if new != nil {
+			return new()
+		}
+	}
+	return nil
+}
+
 // Internal function called before a file is read for setting up the hashing function.
 func (l *File) cksumInit() {
 	if Debug {

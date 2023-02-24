@@ -84,7 +84,7 @@ func NewHTTPTransaction(url string, cfg *tls.Config) (*HTTPTransaction, error) {
 					//KeepAlive: 30 * time.Second,
 				}).DialContext,
 				ForceAttemptHTTP2: true,
-				MaxIdleConns:      100,
+				MaxIdleConns:      30,
 				//IdleConnTimeout:       90 * time.Second,
 				TLSHandshakeTimeout:   10 * time.Second,
 				ExpectContinueTimeout: 1 * time.Second,
