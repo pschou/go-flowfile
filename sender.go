@@ -48,9 +48,9 @@ func NewHTTPTransactionWithTransport(url string, cfg *http.Transport) (*HTTPTran
 	}
 
 	hs := &HTTPTransaction{
-		url:          url,
-		tlsConfig:    transportConfig.TLSClientConfig,
-		CheckSumType: "SHA256",
+		url:       url,
+		tlsConfig: transportConfig.TLSClientConfig,
+		//CheckSumType: "SHA256",
 		client: &http.Client{
 			//Timeout: 30 * time.Second,
 			Transport: transportConfig.Clone(),
@@ -72,9 +72,9 @@ func NewHTTPTransaction(url string, cfg *tls.Config) (*HTTPTransaction, error) {
 	}
 
 	hs := &HTTPTransaction{
-		url:          url,
-		tlsConfig:    cfg,
-		CheckSumType: "SHA256",
+		url:       url,
+		tlsConfig: cfg,
+		//CheckSumType: "SHA256",
 		client: &http.Client{
 			//Timeout: 30 * time.Second,
 			Transport: &http.Transport{
