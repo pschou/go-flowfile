@@ -56,6 +56,17 @@ func (l *File) Verify() error {
 	return ErrorChecksumMissing
 }
 
+// Verify a given hash against the file sent, to ensure a complete and accurate
+// payload.
+func (l *File) VerifyHash(h hash.Hash) error {
+	hashval := h.Sum(nil)
+	if fmt.Sprintf("%0x", hashval) == l.Attrs.Get("checksum") {
+		return nil
+	}
+	return fmt.Errorf("checksum: %0x != attr: %s", hashval,
+		l.Attrs.Get("checksum"))
+}
+
 // VerifyDetails describes why a match was successful or failed
 func (l *File) VerifyDetails() string {
 	switch l.cksumStatus {
@@ -96,6 +107,7 @@ func (l *File) VerifyParent(fp string) error {
 	return fmt.Errorf("No segment.original.checksumType")
 }
 
+// Create a new checksum for verifying payload.
 func (h Attributes) NewEmptyChecksum() hash.Hash {
 	if ct := h.Get("checksumType"); ct != "" {
 		new := getChecksumFunc(ct)
