@@ -26,6 +26,7 @@ const (
 var (
 	ErrorChecksumMismatch = errors.New("Mismatching checksum")
 	ErrorChecksumMissing  = errors.New("Missing checksum")
+	ErrorChecksumNoInit   = errors.New("Checksum was not initialized")
 )
 
 // Verify the file sent was complete and accurate
@@ -61,14 +62,12 @@ func (l *File) AddChecksumFromVerify() error {
 	if l.Size == 0 && l.n == 0 {
 		return nil
 	}
-	switch l.cksumStatus {
-	case cksumInit, cksumPassed, cksumFailed:
+	if l.cksumStatus == cksumInit {
 		hashval := l.cksum.Sum(nil)
 		l.Attrs.Set("checksum", fmt.Sprintf("%0x", hashval))
-		l.cksumStatus = cksumPassed
 		return nil
 	}
-	return errors.New("Checksum was not initialized")
+	return ErrorChecksumNoInit
 }
 
 // Verify a given hash against the file sent, to ensure a complete and accurate
@@ -103,7 +102,7 @@ func (l *File) VerifyParent(fp string) error {
 	if ct := l.Attrs.Get("segment.original.checksumType"); ct != "" {
 		new := getChecksumFunc(ct)
 		if new == nil {
-			return fmt.Errorf("Missing original checksumType")
+			return fmt.Errorf("Invalid original checksumType")
 		}
 		cksum := new()
 		if fh, err := os.Open(fp); err != nil {
