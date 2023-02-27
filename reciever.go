@@ -9,7 +9,6 @@ import (
 	"strconv"
 	"strings"
 	"sync"
-	"sync/atomic"
 	"time"
 )
 
@@ -121,9 +120,9 @@ func (f *HTTPReceiver) bucketCounter(size int64) {
 	for ; idx < len(f.MetricsFlowFileTransferredBuckets) &&
 		size <= f.MetricsFlowFileTransferredBuckets[idx]; idx++ {
 	}
-	atomic.AddInt64(&f.MetricsFlowFileTransferredBucketValues[idx], 1)
-	atomic.AddInt64(&f.MetricsFlowFileTransferredSum, size)
-	atomic.AddInt64(&f.MetricsFlowFileTransferredCount, 1)
+	f.MetricsFlowFileTransferredBucketValues[idx] += 1
+	f.MetricsFlowFileTransferredSum += size
+	f.MetricsFlowFileTransferredCount += 1
 }
 
 // Handle for accepting flow files through a http webserver.  The handle here
@@ -141,22 +140,22 @@ func (f *HTTPReceiver) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	atomic.AddInt64(&f.MetricsThreadsQueued, 1)
+	f.MetricsThreadsQueued += 1
 	var once sync.Once
 	var active bool
 	doOnce := func() {
-		atomic.AddInt64(&f.MetricsThreadsQueued, -1)
-		atomic.AddInt64(&f.MetricsThreadsActive, 1)
+		f.MetricsThreadsQueued -= 1
+		f.MetricsThreadsActive += 1
 		active = true
 	}
 	defer func() {
 		once.Do(doOnce)
 		if active {
-			atomic.AddInt64(&f.MetricsThreadsActive, -1)
+			f.MetricsThreadsActive -= 1
 		} else {
-			atomic.AddInt64(&f.MetricsThreadsQueued, -1)
+			f.MetricsThreadsQueued -= 1
 		}
-		atomic.AddInt64(&f.MetricsThreadsTerminated, 1)
+		f.MetricsThreadsTerminated += 1
 	}()
 
 	// What to do if we are busy!
