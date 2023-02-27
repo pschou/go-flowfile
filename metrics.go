@@ -45,6 +45,18 @@ func (hr *HTTPReceiver) MetricsHandler() http.Handler {
 	return &Metrics{hr: hr}
 }
 
+func NewMetrics() *Metrics {
+	return &Metrics{
+		MetricsFlowFileTransferredBuckets: []int64{
+			1e2, 2.5e2, 1e3,
+			2.5e3, 1e4, 2.5e4, 1e5,
+			2.5e5, 1e6, 2.5e6, 1e7,
+			2.5e7, 1e8, 2.5e8, 1e9},
+		MetricsFlowFileTransferredBucketValues: make([]int64, 16),
+		metricsInitTime:                        time.Now(),
+	}
+}
+
 type Metrics struct {
 	hr *HTTPReceiver
 

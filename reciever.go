@@ -9,7 +9,6 @@ import (
 	"strconv"
 	"strings"
 	"sync"
-	"time"
 )
 
 // Implements http.Handler and can be used with the GoLang built-in http module:
@@ -21,7 +20,7 @@ type HTTPReceiver struct {
 	connections    int
 	MaxConnections int
 
-	Metrics Metrics
+	Metrics *Metrics
 	handler func(*Scanner, http.ResponseWriter, *http.Request)
 }
 
@@ -30,15 +29,7 @@ type HTTPReceiver struct {
 func NewHTTPReceiver(handler func(*Scanner, http.ResponseWriter, *http.Request)) *HTTPReceiver {
 	return &HTTPReceiver{
 		handler: handler,
-		Metrics: Metrics{
-			MetricsFlowFileTransferredBuckets: []int64{
-				1e2, 2.5e2, 1e3,
-				2.5e3, 1e4, 2.5e4, 1e5,
-				2.5e5, 1e6, 2.5e6, 1e7,
-				2.5e7, 1e8, 2.5e8, 1e9},
-			MetricsFlowFileTransferredBucketValues: make([]int64, 16),
-			metricsInitTime:                        time.Now(),
-		},
+		Metrics: NewMetrics(),
 	}
 }
 
@@ -60,15 +51,7 @@ func NewHTTPFileReceiver(handler func(*File, http.ResponseWriter, *http.Request)
 			}
 			return
 		},
-		Metrics: Metrics{
-			MetricsFlowFileTransferredBuckets: []int64{
-				1e2, 2.5e2, 1e3,
-				2.5e3, 1e4, 2.5e4, 1e5,
-				2.5e5, 1e6, 2.5e6, 1e7,
-				2.5e7, 1e8, 2.5e8, 1e9},
-			MetricsFlowFileTransferredBucketValues: make([]int64, 16),
-			metricsInitTime:                        time.Now(),
-		},
+		Metrics: NewMetrics(),
 	}
 }
 
