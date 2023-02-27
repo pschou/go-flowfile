@@ -41,8 +41,12 @@ type HTTPReceiver struct {
 // FlowFile stream and provids a FlowFile scanner to a FlowFile handler.
 func NewHTTPReceiver(handler func(*Scanner, http.ResponseWriter, *http.Request)) *HTTPReceiver {
 	return &HTTPReceiver{
-		handler:                                handler,
-		MetricsFlowFileTransferredBuckets:      []int64{0, 50, 100, 250, 500, 750, 1000, 2500, 5000, 7500, 10000, 25000, 50000, 75000, 1e5},
+		handler: handler,
+		MetricsFlowFileTransferredBuckets: []int64{
+			1e2, 2.5e2, 1e3,
+			2.5e3, 1e4, 2.5e4, 1e5,
+			2.5e5, 1e6, 2.5e6, 1e7,
+			2.5e7, 1e8, 2.5e8, 1e9},
 		MetricsFlowFileTransferredBucketValues: make([]int64, 16),
 	}
 }
@@ -125,7 +129,7 @@ func (f *HTTPReceiver) bucketCounter(size int64) {
 		size <= f.MetricsFlowFileTransferredBuckets[idx]; idx++ {
 	}
 	if Debug {
-		fmt.Println("bucket size", size, idx)
+		fmt.Println("bucket size", size, idx, "in", f.MetricsFlowFileTransferredBuckets)
 	}
 	f.MetricsFlowFileTransferredBucketValues[idx] += 1
 	f.MetricsFlowFileTransferredSum += size
