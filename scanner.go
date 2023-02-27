@@ -35,6 +35,7 @@ func NewScannerSlice(ff ...*File) *Scanner {
 	for _, f := range ff {
 		ch <- f
 	}
+	close(ch)
 	return &Scanner{
 		ch: ch,
 	}
