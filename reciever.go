@@ -33,6 +33,7 @@ type HTTPReceiver struct {
 	MetricsThreadsActive     int64
 	MetricsThreadsTerminated int64
 	MetricsThreadsQueued     int64
+	metricsInitTime          time.Time
 
 	handler func(*Scanner, http.ResponseWriter, *http.Request)
 }
@@ -48,6 +49,7 @@ func NewHTTPReceiver(handler func(*Scanner, http.ResponseWriter, *http.Request))
 			2.5e5, 1e6, 2.5e6, 1e7,
 			2.5e7, 1e8, 2.5e8, 1e9},
 		MetricsFlowFileTransferredBucketValues: make([]int64, 16),
+		metricsInitTime:                        time.Now(),
 	}
 }
 
@@ -75,6 +77,7 @@ func NewHTTPFileReceiver(handler func(*File, http.ResponseWriter, *http.Request)
 			2.5e5, 1e6, 2.5e6, 1e7,
 			2.5e7, 1e8, 2.5e8, 1e9},
 		MetricsFlowFileTransferredBucketValues: make([]int64, 16),
+		metricsInitTime:                        time.Now(),
 	}
 }
 
@@ -120,6 +123,8 @@ func (f HTTPReceiver) Metrics(keyValuePairs ...string) string {
 		lbl, f.MetricsThreadsTerminated, tm)
 	fmt.Fprintf(w, "flowfiles_threads_queued%s %d %d\n",
 		lbl, f.MetricsThreadsQueued, tm)
+	fmt.Fprintf(w, "flowfiles_started%s %d %d\n",
+		lbl, f.metricsInitTime.UnixMilli(), tm)
 	return w.String()
 }
 
