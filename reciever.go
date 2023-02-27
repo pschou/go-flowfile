@@ -120,6 +120,9 @@ func (f HTTPReceiver) Metrics(keyValuePairs ...string) string {
 }
 
 func (f *HTTPReceiver) bucketCounter(size int64) {
+	if Debug {
+		fmt.Println("bucket size", size)
+	}
 	idx := 0
 	for ; idx < len(f.MetricsFlowFileTransferredBuckets) &&
 		size <= f.MetricsFlowFileTransferredBuckets[idx]; idx++ {
