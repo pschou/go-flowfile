@@ -29,7 +29,7 @@ func NewScannerChan(ch chan *File) *Scanner {
 	}
 }
 
-// Create a new FlowFile reader, for reading consecutive FlowFiles from a slice.
+// Create a new FlowFile reader, for reading from a slice of FlowfFles.
 func NewScannerSlice(ff ...*File) *Scanner {
 	ch := make(chan *File, len(ff))
 	for _, f := range ff {
