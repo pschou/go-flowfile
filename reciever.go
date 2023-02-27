@@ -84,7 +84,14 @@ func (m metrics) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(m.hr.Metrics()))
 }
 
-func (f HTTPReceiver) Metrics() string {
+func (f HTTPReceiver) Metrics(keyValuePairs ...string) string {
+	var lbl, lblAdd string
+	if len(keyValuePairs) > 1 {
+		for i := 1; i < len(keyValuePairs); i += 2 {
+			lblAdd += "," + fmt.Sprintf("%s=%q", keyValuePairs[i-1], keyValuePairs[i])
+		}
+		lbl = "{" + lblAdd[1:] + "}"
+	}
 	w := &strings.Builder{}
 	tm := time.Now().UnixMilli()
 	var bk string
@@ -94,18 +101,18 @@ func (f HTTPReceiver) Metrics() string {
 		} else {
 			bk = "+Inf"
 		}
-		fmt.Fprintf(w, "flowfiles_transfered_bytes_bucket{le=%q} %d %d\n", bk, v, tm)
+		fmt.Fprintf(w, "flowfiles_transfered_bytes_bucket{le=%q%s} %d %d\n", bk, lblAdd, v, tm)
 	}
-	fmt.Fprintf(w, "flowfiles_transfered_bytes_sum %d %d\n",
-		f.MetricsFlowFileTransferredSum, tm)
-	fmt.Fprintf(w, "flowfiles_transfered_bytes_count %d %d\n",
-		f.MetricsFlowFileTransferredCount, tm)
-	fmt.Fprintf(w, "flowfiles_threads_active %d %d\n",
-		f.MetricsThreadsActive, tm)
-	fmt.Fprintf(w, "flowfiles_threads_terminated %d %d\n",
-		f.MetricsThreadsTerminated, tm)
-	fmt.Fprintf(w, "flowfiles_threads_queued %d %d\n",
-		f.MetricsThreadsQueued, tm)
+	fmt.Fprintf(w, "flowfiles_transfered_bytes_sum%s %d %d\n",
+		lbl, f.MetricsFlowFileTransferredSum, tm)
+	fmt.Fprintf(w, "flowfiles_transfered_bytes_count%s %d %d\n",
+		lbl, f.MetricsFlowFileTransferredCount, tm)
+	fmt.Fprintf(w, "flowfiles_threads_active%s %d %d\n",
+		lbl, f.MetricsThreadsActive, tm)
+	fmt.Fprintf(w, "flowfiles_threads_terminated%s %d %d\n",
+		lbl, f.MetricsThreadsTerminated, tm)
+	fmt.Fprintf(w, "flowfiles_threads_queued%s %d %d\n",
+		lbl, f.MetricsThreadsQueued, tm)
 	return w.String()
 }
 
