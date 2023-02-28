@@ -22,6 +22,9 @@ func (f *File) EncodedReader() (rdr io.Reader) {
 	header := bytes.NewBuffer([]byte{})
 	f.Attrs.WriteTo(header)
 	binary.Write(header, binary.BigEndian, uint64(f.Size))
+	if f.Size == 0 {
+		return header
+	}
 	return io.MultiReader(header, f)
 }
 
