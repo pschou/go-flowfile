@@ -72,7 +72,7 @@ func (h *Attributes) CustodyChainAddHTTP(r *http.Request) {
 	if r.RequestURI != "" {
 		updated = append(updated, Attribute{"custodyChain.0.request.uri", r.RequestURI})
 	}
-	if host, _, err := net.SplitHostPort(r.RemoteAddr); err == nil {
+	if host, port, err := net.SplitHostPort(r.RemoteAddr); err == nil {
 		updated = append(updated, Attribute{"custodyChain.0.source.host", host})
 		updated = append(updated, Attribute{"custodyChain.0.source.port", port})
 	} else {
