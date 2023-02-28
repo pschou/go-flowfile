@@ -151,6 +151,8 @@ func (l *File) ChecksumInit() error {
 		}
 		l.cksumStatus = cksumUnverified
 		return errors.New("Unable to find matching checksum type")
+	} else {
+		l.cksumStatus = cksumPassed
 	}
 	return nil
 }
