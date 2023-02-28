@@ -10,7 +10,6 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/pschou/go-unixmode"
 	"github.com/relvacode/iso8601"
@@ -116,35 +115,37 @@ func (f *File) saveRegular(outputFile string) (err error) {
 		// Make sure the target file is in place and has the right size:
 		fh, err = os.OpenFile(outputFile, os.O_RDWR|os.O_CREATE|os.O_EXCL, 0666)
 		if err == nil {
-			io.Copy(fh, &zeros{n: parentSize})
+			//io.Copy(fh, &zeros{n: parentSize})
+			fh.Truncate(int64(parentSize))
 			fh.Close()
 		}
 
-		var stat os.FileInfo
-		stat, err = os.Stat(outputFile)
-		for i := 0; err != nil && i < 10 || uint64(stat.Size()) < parentSize; i++ {
-			time.Sleep(3 * time.Second)
-			stat, err = os.Stat(outputFile)
+		//var stat os.FileInfo
+		//stat, err = os.Stat(outputFile)
+		//for i := 0; err != nil && i < 10 || uint64(stat.Size()) < parentSize; i++ {
+		//	time.Sleep(3 * time.Second)
+		//	stat, err = os.Stat(outputFile)
+		//}
+		//if uint64(stat.Size()) == parentSize {
+		if fh, err = os.OpenFile(outputFile, os.O_RDWR, 0600); err != nil {
+			return
 		}
-		if uint64(stat.Size()) == parentSize {
-			if fh, err = os.OpenFile(outputFile, os.O_RDWR, 0600); err != nil {
-				return
-			}
-			defer fh.Close() // Make sure file is closed at the end of the function
+		defer fh.Close() // Make sure file is closed at the end of the function
 
-			var newOffset int64
-			if newOffset, err = fh.Seek(int64(offset), io.SeekStart); err != nil {
-				return
-			} else if uint64(newOffset) != offset {
-				err = fmt.Errorf("Not able to seek to correct offset %d != %d", newOffset, offset)
-				return
-			}
-
-			// Write out the segment contents
-			if _, err = io.Copy(fh, f); err != nil {
-				return
-			}
+		var newOffset int64
+		if newOffset, err = fh.Seek(int64(offset), io.SeekStart); err != nil {
+			return
+		} else if uint64(newOffset) != offset {
+			err = fmt.Errorf("Not able to seek to correct offset %d != %d", newOffset, offset)
+			return
 		}
+
+		// Write out the segment contents
+		if _, err = io.Copy(fh, f); err != nil {
+			return
+		}
+		//}
+		fh.Truncate(int64(parentSize))
 	}
 	return
 }

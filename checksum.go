@@ -140,9 +140,7 @@ func (l *File) ChecksumInit() error {
 	if Debug {
 		log.Println("Checksum init for", l.Attrs.Get("filename"))
 	}
-	if l.Size == 0 {
-		l.cksumStatus = cksumPassed
-	} else {
+	if l.Size > 0 {
 		if ct := l.Attrs.Get("checksumType"); ct != "" {
 			new := getChecksumFunc(ct)
 			if new != nil {
