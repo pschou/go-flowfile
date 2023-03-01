@@ -86,8 +86,8 @@ func NewHTTPTransaction(url string, cfg *tls.Config) (*HTTPTransaction, error) {
 				ForceAttemptHTTP2: true,
 				MaxIdleConns:      30,
 				//IdleConnTimeout:       90 * time.Second,
-				TLSHandshakeTimeout:   10 * time.Second,
-				ExpectContinueTimeout: 1 * time.Second,
+				TLSHandshakeTimeout:   30 * time.Second,
+				ExpectContinueTimeout: 10 * time.Second,
 				TLSClientConfig:       tlsConfig,
 			}},
 	}
@@ -97,6 +97,37 @@ func NewHTTPTransaction(url string, cfg *tls.Config) (*HTTPTransaction, error) {
 		return nil, err
 	}
 	return hs, nil
+}
+
+// Create the HTTP sender without verifying remote is listening
+func NewHTTPTransactionNoHandshake(url string, cfg *tls.Config) *HTTPTransaction {
+	var tlsConfig *tls.Config
+	if cfg != nil {
+		tlsConfig = cfg.Clone() // Create a copy for immutability
+	}
+
+	hs := &HTTPTransaction{
+		url:       url,
+		tlsConfig: cfg,
+		//CheckSumType: "SHA256",
+		client: &http.Client{
+			//Timeout: 30 * time.Second,
+			Transport: &http.Transport{
+				Proxy:       http.ProxyFromEnvironment,
+				DialContext: (&net.Dialer{
+					//Timeout:   30 * time.Second,
+					//KeepAlive: 30 * time.Second,
+				}).DialContext,
+				ForceAttemptHTTP2: true,
+				MaxIdleConns:      30,
+				//IdleConnTimeout:       90 * time.Second,
+				TLSHandshakeTimeout:   30 * time.Second,
+				ExpectContinueTimeout: 10 * time.Second,
+				TLSClientConfig:       tlsConfig,
+			}},
+	}
+
+	return hs
 }
 
 // Establishes or re-establishes a transaction id with NiFi to begin the
@@ -459,6 +490,10 @@ func (httpWriter *HTTPPostWriter) doPost(hs *HTTPTransaction, r io.ReadCloser) {
 		r.Close() // Make sure pipe is terminated
 		httpWriter.clientErr <- err
 	}()
+
+	if hs.TransactionID == "" { // Lazy init
+		hs.Handshake()
+	}
 
 	req, _ := http.NewRequest("POST", hs.url, r)
 	// We shouldn't get an error here as the session would have already
